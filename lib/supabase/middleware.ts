@@ -94,5 +94,22 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // 检查管理后台访问权限
+  if (user && pathname.startsWith('/glht')) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single()
+
+    if (!profile?.is_admin) {
+      // 非管理员访问管理后台，跳转到管理员登录页并显示错误
+      const url = request.nextUrl.clone()
+      url.pathname = '/auth/admin-login'
+      url.searchParams.set('error', 'unauthorized')
+      return NextResponse.redirect(url)
+    }
+  }
+
   return supabaseResponse
 }

@@ -12,8 +12,8 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { Captcha } from '@/components/captcha'
 import { LoadingOverlay } from '@/components/loading-overlay'
 import { ShieldCheck } from 'lucide-react'
@@ -27,6 +27,14 @@ export default function AdminLoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const errorParam = searchParams.get('error')
+    if (errorParam === 'unauthorized') {
+      setError('您没有管理员权限，请使用管理员账号登录')
+    }
+  }, [searchParams])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -1,14 +1,26 @@
-'use client'
+import { createClient } from '@/lib/supabase/server'
+import { HeroSection } from '@/components/home/hero-section'
+import { FeatureCards } from '@/components/home/feature-cards'
+import { PricingPreview } from '@/components/home/pricing-preview'
 
-export default function HomePage() {
+export default async function HomePage() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
   return (
     <div className="min-h-screen pb-20">
-      <div className="flex flex-col items-center justify-center px-4 py-8">
-        <h1 className="text-3xl font-bold mb-4">首页</h1>
-        <p className="text-muted-foreground text-center">
-          欢迎来到客小兔 AI 口播数字人平台
-        </p>
-      </div>
+      <HeroSection isLoggedIn={!!user} />
+      <FeatureCards />
+      <PricingPreview isLoggedIn={!!user} />
+
+      {/* Footer */}
+      <footer className="border-t py-12">
+        <div className="container mx-auto px-4 text-center">
+          <p className="text-sm text-muted-foreground">&copy; 2024 客小兔 AI 口播数字人平台. All rights reserved.</p>
+        </div>
+      </footer>
     </div>
   )
 }

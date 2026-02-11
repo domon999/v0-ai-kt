@@ -56,5 +56,43 @@ export async function updateSession(request: NextRequest) {
   // If this is not done, you may be causing the browser and server to go out
   // of sync and terminate the user's session prematurely!
 
-  return { response: supabaseResponse, user }
+  const pathname = request.nextUrl.pathname
+
+  // 定义公开路由（无需认证）
+  const publicRoutes = [
+    '/',
+    '/home',
+    '/auth/login',
+    '/auth/sign-up',
+    '/auth/callback',
+    '/auth/verify-email',
+    '/auth/reset-password',
+    '/auth/update-password',
+    '/auth/admin-login',
+    '/auth/error',
+  ]
+
+  const isPublicRoute = publicRoutes.some(
+    (route) => pathname === route || pathname.startsWith(route + '/'),
+  )
+
+  // 静态资源和公开路由直接放行
+  if (
+    isPublicRoute ||
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.includes('.')
+  ) {
+    return supabaseResponse
+  }
+
+  // 未登录用户访问受保护路由，跳转到登录页
+  if (!user && (pathname.startsWith('/wd') || pathname.startsWith('/rw') || pathname.startsWith('/glht'))) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/auth/login'
+    url.searchParams.set('redirect', pathname)
+    return NextResponse.redirect(url)
+  }
+
+  return supabaseResponse
 }

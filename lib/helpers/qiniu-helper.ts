@@ -1,5 +1,3 @@
-import qiniu from 'qiniu'
-
 export interface QiniuConfig {
   accessKey: string
   secretKey: string
@@ -9,23 +7,23 @@ export interface QiniuConfig {
 }
 
 export class QiniuHelper {
-  private mac: qiniu.auth.digest.Mac
   private config: QiniuConfig
-  private bucketManager: qiniu.rs.BucketManager
+  private qiniuPromise: Promise<any> | null = null
 
   constructor(config: QiniuConfig) {
     this.config = config
-    this.mac = new qiniu.auth.digest.Mac(config.accessKey, config.secretKey)
-    
-    const qiniuConfig = new qiniu.conf.Config({
-      zone: this.getZone(config.region || 'z0'),
-    })
-    
-    this.bucketManager = new qiniu.rs.BucketManager(this.mac, qiniuConfig)
   }
 
-  private getZone(region: string): qiniu.conf.Zone {
-    const zones: Record<string, qiniu.conf.Zone> = {
+  private async getQiniu() {
+    if (!this.qiniuPromise) {
+      this.qiniuPromise = import('qiniu')
+    }
+    return this.qiniuPromise
+  }
+
+  private async getZone(region: string) {
+    const qiniu = await this.getQiniu()
+    const zones: Record<string, any> = {
       z0: qiniu.zone.Zone_z0, // 华东
       z1: qiniu.zone.Zone_z1, // 华北
       z2: qiniu.zone.Zone_z2, // 华南
@@ -36,19 +34,22 @@ export class QiniuHelper {
   }
 
   async upload(buffer: Buffer, key: string, mimeType?: string): Promise<string> {
+    const qiniu = await this.getQiniu()
+    const mac = new qiniu.auth.digest.Mac(this.config.accessKey, this.config.secretKey)
+    
     const options = {
       scope: this.config.bucket,
       mimeLimit: mimeType,
     }
     
     const putPolicy = new qiniu.rs.PutPolicy(options)
-    const uploadToken = putPolicy.uploadToken(this.mac)
+    const uploadToken = putPolicy.uploadToken(mac)
 
     const formUploader = new qiniu.form_up.FormUploader(new qiniu.conf.Config())
     const putExtra = new qiniu.form_up.PutExtra()
 
     return new Promise((resolve, reject) => {
-      formUploader.put(uploadToken, key, buffer, putExtra, (err, body, info) => {
+      formUploader.put(uploadToken, key, buffer, putExtra, (err: any, body: any, info: any) => {
         if (err) {
           reject(err)
         } else if (info.statusCode === 200) {
@@ -62,8 +63,13 @@ export class QiniuHelper {
   }
 
   async delete(key: string): Promise<void> {
+    const qiniu = await this.getQiniu()
+    const mac = new qiniu.auth.digest.Mac(this.config.accessKey, this.config.secretKey)
+    const config = new qiniu.conf.Config({ zone: await this.getZone(this.config.region || 'z0') })
+    const bucketManager = new qiniu.rs.BucketManager(mac, config)
+    
     return new Promise((resolve, reject) => {
-      this.bucketManager.delete(this.config.bucket, key, (err, respBody, respInfo) => {
+      bucketManager.delete(this.config.bucket, key, (err: any, respBody: any, respInfo: any) => {
         if (err) {
           reject(err)
         } else if (respInfo.statusCode === 200) {
@@ -76,8 +82,13 @@ export class QiniuHelper {
   }
 
   async stat(key: string): Promise<any> {
+    const qiniu = await this.getQiniu()
+    const mac = new qiniu.auth.digest.Mac(this.config.accessKey, this.config.secretKey)
+    const config = new qiniu.conf.Config({ zone: await this.getZone(this.config.region || 'z0') })
+    const bucketManager = new qiniu.rs.BucketManager(mac, config)
+    
     return new Promise((resolve, reject) => {
-      this.bucketManager.stat(this.config.bucket, key, (err, respBody, respInfo) => {
+      bucketManager.stat(this.config.bucket, key, (err: any, respBody: any, respInfo: any) => {
         if (err) {
           reject(err)
         } else if (respInfo.statusCode === 200) {

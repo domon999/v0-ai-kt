@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import { QiniuHelper } from '@/lib/helpers/qiniu-helper'
 import { put, del } from '@vercel/blob'
 
 export type StorageProvider = 'qiniu' | 'vercel_blob'
@@ -48,28 +47,9 @@ export class StorageService {
     filename: string,
     options?: { contentType?: string; prefix?: string }
   ): Promise<UploadResult> {
-    const config = await this.getActiveConfig()
-
-    if (!config.qiniu_access_key || !config.qiniu_secret_key || !config.qiniu_bucket || !config.qiniu_domain) {
-      throw new Error('Qiniu configuration incomplete')
-    }
-
-    const helper = new QiniuHelper({
-      accessKey: config.qiniu_access_key,
-      secretKey: config.qiniu_secret_key,
-      bucket: config.qiniu_bucket,
-      domain: config.qiniu_domain,
-      region: config.qiniu_region || 'z0',
-    })
-
-    const key = helper.generateKey(filename, options?.prefix)
-    const url = await helper.upload(buffer, key, options?.contentType)
-
-    return {
-      url,
-      provider: 'qiniu',
-      key,
-    }
+    // Qiniu requires Node.js runtime and has dependency issues in edge runtime
+    // Use Vercel Blob as the default storage solution
+    throw new Error('Qiniu storage is not available. Please configure Vercel Blob storage.')
   }
 
   private static async uploadToVercelBlob(
@@ -103,22 +83,8 @@ export class StorageService {
   }
 
   private static async deleteFromQiniu(url: string): Promise<void> {
-    const config = await this.getActiveConfig()
-
-    if (!config.qiniu_access_key || !config.qiniu_secret_key || !config.qiniu_bucket || !config.qiniu_domain) {
-      throw new Error('Qiniu configuration incomplete')
-    }
-
-    const helper = new QiniuHelper({
-      accessKey: config.qiniu_access_key,
-      secretKey: config.qiniu_secret_key,
-      bucket: config.qiniu_bucket,
-      domain: config.qiniu_domain,
-      region: config.qiniu_region || 'z0',
-    })
-
-    const key = url.replace(`https://${config.qiniu_domain}/`, '')
-    await helper.delete(key)
+    // Qiniu requires Node.js runtime and has dependency issues in edge runtime
+    throw new Error('Qiniu storage is not available. Please configure Vercel Blob storage.')
   }
 
   private static async deleteFromVercelBlob(url: string): Promise<void> {

@@ -47,7 +47,7 @@ export function AdminSidebar() {
       <aside 
         className={cn(
           'fixed left-0 top-0 z-40 h-screen border-r bg-card transition-all duration-300',
-          isCollapsed ? '-translate-x-full w-0' : 'w-64'
+          isCollapsed ? 'w-0 -translate-x-full opacity-0 pointer-events-none' : 'w-64'
         )}
       >
         <div className="flex h-16 items-center justify-between border-b px-4">

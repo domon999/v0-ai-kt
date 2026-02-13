@@ -358,25 +358,36 @@ export class MinimaxVoiceService {
 export async function getMinimaxService(): Promise<MinimaxVoiceService> {
   const supabase = await createClient()
 
+  console.log('[v0] Fetching MiniMax configs...')
+
   const { data: configs, error } = await supabase
     .from('minimax_voice_configs')
     .select('*')
     .eq('enabled', true)
     .order('priority', { ascending: true })
 
-  if (error || !configs || configs.length === 0) {
-    throw new Error('没有可用的 MiniMax 配置')
+  console.log('[v0] Configs query:', { hasConfigs: !!configs, count: configs?.length, error })
+
+  if (error) {
+    console.error('[v0] Config query error:', error)
+    throw new Error(`查询配置失败: ${error.message}`)
   }
 
-  return new MinimaxVoiceService(
-    configs.map((c) => ({
-      id: c.id,
-      provider: c.provider,
-      apiKey: c.api_key,
-      groupId: c.group_id,
-      endpoint: c.api_endpoint || 'https://api.minimaxi.com',
-      enabled: c.enabled,
-      priority: c.priority,
-    }))
-  )
+  if (!configs || configs.length === 0) {
+    throw new Error('没有可用的 MiniMax 配置，请先在管理后台添加配置')
+  }
+
+  const serviceConfigs = configs.map((c) => ({
+    id: c.id,
+    provider: c.provider,
+    apiKey: c.api_key,
+    groupId: c.group_id,
+    endpoint: 'https://api.minimaxi.com', // 固定使用官方端点
+    enabled: c.enabled,
+    priority: c.priority,
+  }))
+
+  console.log('[v0] Service configs:', serviceConfigs.length)
+
+  return new MinimaxVoiceService(serviceConfigs)
 }

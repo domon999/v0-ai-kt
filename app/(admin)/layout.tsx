@@ -31,12 +31,14 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <AdminSidebar />
-      <div className="pl-64">
-        <AdminTopBar email={user.email} />
-        <main className="pt-16">
-          <div className="p-6">{children}</div>
-        </main>
+      <div className="flex">
+        <AdminSidebar />
+        <div className="flex-1">
+          <AdminTopBar email={user.email} />
+          <main className="pt-16">
+            <div className="p-6">{children}</div>
+          </main>
+        </div>
       </div>
     </div>
   )

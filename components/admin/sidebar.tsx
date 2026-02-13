@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { 
@@ -10,9 +11,12 @@ import {
   Image as ImageIcon,
   Cloud,
   FileText,
-  UserCog
+  UserCog,
+  ChevronLeft,
+  Menu
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 const menuItems = [
   { icon: LayoutDashboard, label: '仪表盘', href: '/glht/ybp' },
@@ -20,42 +24,78 @@ const menuItems = [
   { icon: CreditCard, label: '积分卡管理', href: '/glht/jfk' },
   { icon: Settings, label: 'API 管理', href: '/glht/api' },
   { icon: ImageIcon, label: '背景图片', href: '/glht/bjtp' },
-  { icon: Cloud, label: '七牛云管理', href: '/glht/qny' },
+  { icon: Cloud, label: '存储管理', href: '/glht/cc' },
   { icon: FileText, label: '合成记录', href: '/glht/hcjl' },
-  { icon: UserCog, label: '代理商管理', href: '/glht/dls' },
+  { icon: UserCog, label: '环境变量', href: '/glht/hjbl' },
 ]
 
 export function AdminSidebar() {
   const pathname = usePathname()
+  const [isCollapsed, setIsCollapsed] = useState(false)
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r bg-card">
-      <div className="flex h-16 items-center border-b px-6">
-        <h1 className="text-xl font-bold">客小兔 · 管理后台</h1>
-      </div>
-      
-      <nav className="space-y-1 p-4">
-        {menuItems.map((item) => {
-          const Icon = item.icon
-          const isActive = pathname === item.href
-          
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-                isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-              )}
-            >
-              <Icon className="h-5 w-5" />
-              <span>{item.label}</span>
-            </Link>
-          )
-        })}
-      </nav>
-    </aside>
+    <>
+      {/* 移动端遮罩 */}
+      {!isCollapsed && (
+        <div 
+          className="fixed inset-0 z-30 bg-background/80 backdrop-blur-sm lg:hidden"
+          onClick={() => setIsCollapsed(true)}
+        />
+      )}
+
+      {/* 侧边栏 */}
+      <aside 
+        className={cn(
+          'fixed left-0 top-0 z-40 h-screen border-r bg-card transition-all duration-300',
+          isCollapsed ? 'w-16' : 'w-64'
+        )}
+      >
+        <div className="flex h-16 items-center justify-between border-b px-4">
+          {!isCollapsed && (
+            <h1 className="text-lg font-bold">客小兔管理后台</h1>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="ml-auto"
+          >
+            {isCollapsed ? (
+              <Menu className="h-5 w-5" />
+            ) : (
+              <ChevronLeft className="h-5 w-5" />
+            )}
+          </Button>
+        </div>
+        
+        <nav className="space-y-1 p-2">
+          {menuItems.map((item) => {
+            const Icon = item.icon
+            const isActive = pathname === item.href
+            
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                  isActive
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                  isCollapsed && 'justify-center'
+                )}
+                title={isCollapsed ? item.label : undefined}
+              >
+                <Icon className="h-5 w-5 flex-shrink-0" />
+                {!isCollapsed && <span>{item.label}</span>}
+              </Link>
+            )
+          })}
+        </nav>
+      </aside>
+
+      {/* 占位元素 */}
+      <div className={cn('transition-all duration-300', isCollapsed ? 'w-16' : 'w-64')} />
+    </>
   )
 }

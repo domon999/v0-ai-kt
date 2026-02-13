@@ -6,9 +6,6 @@ import { GenerateStep } from '@/components/rw/generate-step'
 import { VideoStep } from '@/components/rw/video-step'
 import { VideoList } from '@/components/rw/video-list'
 import { Separator } from '@/components/ui/separator'
-import { Button } from '@/components/ui/button'
-import { Video } from 'lucide-react'
-import Link from 'next/link'
 
 interface Video {
   id: string
@@ -81,19 +78,11 @@ export function ClonePageClient({ initialVideos }: ClonePageClientProps) {
 
   return (
     <div className="space-y-8 pb-20">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">数字人克隆</h1>
-          <p className="mt-2 text-muted-foreground">
-            3步创建专属数字人视频：上传照片 → 生成数字人 → 转换视频
-          </p>
-        </div>
-        <Link href="/rw/kbhc">
-          <Button size="lg" className="gap-2">
-            <Video className="h-5 w-5" />
-            口播合成
-          </Button>
-        </Link>
+      <div>
+        <h1 className="text-3xl font-bold">数字人克隆</h1>
+        <p className="mt-2 text-muted-foreground">
+          3步创建专属数字人视频：上传照片 → 生成数字人 → 转换视频
+        </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">

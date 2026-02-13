@@ -2,12 +2,16 @@
 
 import { useState } from 'react'
 import { BackgroundGrid } from '@/components/wd/bj/background-grid'
-import { UploadBackground } from '@/components/wd/bj/upload-background'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { BackgroundUploadDialog } from '@/components/wd/bj/background-upload-dialog'
+import { EmptyState } from '@/components/ui/empty-state'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Upload, Image as ImageIcon, Search } from 'lucide-react'
 
 interface Background {
   id: string
   name: string
+  description?: string
   image_url: string
   is_active: boolean
 }
@@ -96,42 +100,6 @@ export function BackgroundPageClient({
           onSuccess={handleUploadSuccess}
         />
       )}
-    </div>
-  )
-}
-  }
-
-  const handleUploadSuccess = async () => {
-    const res = await fetch('/api/backgrounds')
-    const data = await res.json()
-    setBackgrounds(data)
-  }
-
-  return (
-    <div className="pb-20 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold mb-2">背景管理</h1>
-        <p className="text-muted-foreground">
-          {isAdmin ? '管理系统背景图片' : '浏览可用背景图片'}
-        </p>
-      </div>
-
-      {isAdmin && (
-        <Card>
-          <CardHeader>
-            <CardTitle>上传新背景</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <UploadBackground onUploadSuccess={handleUploadSuccess} />
-          </CardContent>
-        </Card>
-      )}
-
-      <BackgroundGrid
-        backgrounds={backgrounds}
-        onDelete={isAdmin ? handleDelete : undefined}
-        isAdmin={isAdmin}
-      />
     </div>
   )
 }

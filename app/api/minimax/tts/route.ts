@@ -1,6 +1,6 @@
 import { type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getMinimaxService } from '@/lib/services/minimax-voice-service'
+import { getMinimaxTTSService } from '@/lib/services/minimax-tts-service'
 import { CreditService } from '@/lib/services/credit-service'
 import { ApiResponseHelper } from '@/lib/utils/api-response'
 
@@ -49,12 +49,12 @@ export async function POST(request: NextRequest) {
     }
 
     // 调用 MiniMax API
-    console.log('[v0] Getting MiniMax service...')
-    let minimaxService
+    console.log('[v0] Getting MiniMax TTS service...')
+    let ttsService
     try {
-      minimaxService = await getMinimaxService()
+      ttsService = await getMinimaxTTSService()
     } catch (serviceError) {
-      console.error('[v0] Failed to get MiniMax service:', serviceError)
+      console.error('[v0] Failed to get MiniMax TTS service:', serviceError)
       return ApiResponseHelper.serverError(
         serviceError instanceof Error 
           ? serviceError.message 
@@ -62,8 +62,8 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    console.log('[v0] Service obtained, calling textToSpeech...')
-    const result = await minimaxService.textToSpeech({
+    console.log('[v0] TTS service obtained, calling textToSpeech...')
+    const result = await ttsService.textToSpeech({
       text,
       voiceId,
       model,
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         text,
         voice_id: voiceId,
-        model: model || 'speech-2.6-hd',
+        model: model || 'speech-2.8-hd',
         audio_url: result.data.audioUrl,
         duration: result.data.duration,
         speed: speed || 1.0,

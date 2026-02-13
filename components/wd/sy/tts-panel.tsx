@@ -19,14 +19,16 @@ interface TTSPanelProps {
   voices: Voice[]
 }
 
-// MiniMax 官方预设声音
+// MiniMax 官方预设声音（根据官方文档）
 const OFFICIAL_VOICES = [
-  { id: 'male-qn-qingse', name: '青涩青年-男' },
-  { id: 'female-shaonv', name: '少女' },
-  { id: 'male-qn-jingying', name: '精英青年-男' },
-  { id: 'female-yujie', name: '御姐' },
-  { id: 'presenter_male', name: '男性主持人' },
-  { id: 'presenter_female', name: '女性主持人' },
+  { id: 'male-qn-qingse', name: '青涩青年音色' },
+  { id: 'male-qn-jingying', name: '精英青年音色' },
+  { id: 'male-qn-badao', name: '霸道青年音色' },
+  { id: 'male-qn-daxuesheng', name: '青年大学生音色' },
+  { id: 'female-shaonv', name: '少女音色' },
+  { id: 'female-yujie', name: '御姐音色' },
+  { id: 'female-chengshu', name: '成熟女性音色' },
+  { id: 'female-tianmei', name: '甜美女性音色' },
 ]
 
 export function TTSPanel({ voices }: TTSPanelProps) {
@@ -36,7 +38,7 @@ export function TTSPanel({ voices }: TTSPanelProps) {
   const [isGenerating, setIsGenerating] = useState(false)
   const { toast } = useToast()
 
-  const estimatedCredits = Math.ceil(text.length / 100) * 10
+  const estimatedCredits = Math.ceil(text.length / 10) // 每10个字符消耗1积分
 
   const handleGenerate = async () => {
     if (!text.trim()) {

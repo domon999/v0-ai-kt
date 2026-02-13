@@ -15,6 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { ChangePasswordDialog } from '@/components/wd/change-password-dialog'
 
 export function MenuGrid() {
   const router = useRouter()
@@ -135,27 +136,7 @@ export function MenuGrid() {
       </AlertDialog>
 
       {/* Password Dialog */}
-      <AlertDialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>修改密码</AlertDialogTitle>
-            <AlertDialogDescription>
-              系统将向您的注册邮箱发送密码重置链接，请前往邮箱完成密码修改。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                setShowPasswordDialog(false)
-                router.push('/auth/reset-password')
-              }}
-            >
-              前往修改
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ChangePasswordDialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog} />
     </>
   )
 }

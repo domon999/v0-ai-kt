@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { put } from '@vercel/blob'
 
 /**
  * MiniMax 语音合成服务
@@ -131,9 +132,7 @@ export class MinimaxTTSService {
    * 上传音频到 Vercel Blob
    */
   private async uploadAudio(audioBuffer: Buffer, provider: string): Promise<string> {
-    const { put } = await import('@vercel/blob')
-    
-    const filename = `minimax-tts-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.mp3`
+    const filename = `minimax-tts/${Date.now()}-${Math.random().toString(36).substring(2, 11)}.mp3`
     
     const blob = await put(filename, audioBuffer, {
       access: 'public',

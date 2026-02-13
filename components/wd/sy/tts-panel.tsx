@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AudioPlayer } from './audio-player'
 import { Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
@@ -18,6 +18,16 @@ interface Voice {
 interface TTSPanelProps {
   voices: Voice[]
 }
+
+// MiniMax 官方预设声音
+const OFFICIAL_VOICES = [
+  { id: 'male-qn-qingse', name: '青涩青年-男' },
+  { id: 'female-shaonv', name: '少女' },
+  { id: 'male-qn-jingying', name: '精英青年-男' },
+  { id: 'female-yujie', name: '御姐' },
+  { id: 'presenter_male', name: '男性主持人' },
+  { id: 'presenter_female', name: '女性主持人' },
+]
 
 export function TTSPanel({ voices }: TTSPanelProps) {
   const [text, setText] = useState('')
@@ -87,11 +97,25 @@ export function TTSPanel({ voices }: TTSPanelProps) {
               <SelectValue placeholder="选择声音模型" />
             </SelectTrigger>
             <SelectContent>
-              {voices.map((voice) => (
-                <SelectItem key={voice.id} value={voice.id}>
-                  {voice.voice_name}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                <SelectLabel>官方声音</SelectLabel>
+                {OFFICIAL_VOICES.map((voice) => (
+                  <SelectItem key={voice.id} value={voice.id}>
+                    {voice.name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+              
+              {voices.length > 0 && (
+                <SelectGroup>
+                  <SelectLabel>我的声音</SelectLabel>
+                  {voices.map((voice) => (
+                    <SelectItem key={voice.id} value={voice.voice_id}>
+                      {voice.voice_name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              )}
             </SelectContent>
           </Select>
         </div>

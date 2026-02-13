@@ -47,7 +47,7 @@ export function AdminSidebar() {
       <aside 
         className={cn(
           'fixed left-0 top-0 z-40 h-screen border-r bg-card transition-all duration-300',
-          isCollapsed ? 'w-16' : 'w-64'
+          isCollapsed ? '-translate-x-full w-0' : 'w-64'
         )}
       >
         <div className="flex h-16 items-center justify-between border-b px-4">
@@ -81,13 +81,11 @@ export function AdminSidebar() {
                   'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
                   isActive
                     ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                  isCollapsed && 'justify-center'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 )}
-                title={isCollapsed ? item.label : undefined}
               >
                 <Icon className="h-5 w-5 flex-shrink-0" />
-                {!isCollapsed && <span>{item.label}</span>}
+                <span>{item.label}</span>
               </Link>
             )
           })}
@@ -95,7 +93,19 @@ export function AdminSidebar() {
       </aside>
 
       {/* 占位元素 */}
-      <div className={cn('transition-all duration-300', isCollapsed ? 'w-16' : 'w-64')} />
+      <div className={cn('transition-all duration-300', isCollapsed ? 'w-0' : 'w-64')} />
+      
+      {/* 浮动展开按钮 */}
+      {isCollapsed && (
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setIsCollapsed(false)}
+          className="fixed left-4 top-4 z-50 shadow-lg"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+      )}
     </>
   )
 }

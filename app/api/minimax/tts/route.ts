@@ -50,7 +50,18 @@ export async function POST(request: NextRequest) {
 
     // 调用 MiniMax API
     console.log('[v0] Getting MiniMax service...')
-    const minimaxService = await getMinimaxService()
+    let minimaxService
+    try {
+      minimaxService = await getMinimaxService()
+    } catch (serviceError) {
+      console.error('[v0] Failed to get MiniMax service:', serviceError)
+      return ApiResponseHelper.serverError(
+        serviceError instanceof Error 
+          ? serviceError.message 
+          : '无法获取 MiniMax 服务，请确保已在管理后台配置 MiniMax API'
+      )
+    }
+    
     console.log('[v0] Service obtained, calling textToSpeech...')
     const result = await minimaxService.textToSpeech({
       text,

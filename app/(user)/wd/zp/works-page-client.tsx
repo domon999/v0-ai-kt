@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { WorkCard } from '@/components/wd/zp/work-card'
+import { BackButton } from '@/components/wd/back-button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Film, Search } from 'lucide-react'
@@ -41,6 +42,7 @@ export function WorksPageClient({ initialWorks }: WorksPageClientProps) {
 
   return (
     <div className="space-y-6 pb-20">
+      <BackButton />
       <div>
         <h1 className="text-3xl font-bold">我的作品</h1>
         <p className="text-muted-foreground">查看和管理您的所有作品</p>

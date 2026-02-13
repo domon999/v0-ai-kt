@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { BackgroundGrid } from '@/components/wd/bj/background-grid'
 import { BackgroundUploadDialog } from '@/components/wd/bj/background-upload-dialog'
+import { BackButton } from '@/components/wd/back-button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,6 +40,7 @@ export function BackgroundPageClient({
 
   return (
     <div className="space-y-6 pb-20">
+      <BackButton />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">背景管理</h1>

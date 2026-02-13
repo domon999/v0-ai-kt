@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { BackButton } from '@/components/wd/back-button'
 import { BalanceCard } from '@/components/wd/jf/balance-card'
 import { RechargeForm } from '@/components/wd/jf/recharge-form'
 import { RechargeHistory } from '@/components/wd/jf/recharge-history'
@@ -39,6 +40,7 @@ export function CreditsPageClient({ initialBalance, initialRecords }: CreditsPag
 
   return (
     <div className="space-y-6 pb-20">
+      <BackButton />
       <div>
         <h1 className="text-3xl font-bold">积分管理</h1>
         <p className="mt-2 text-muted-foreground">查看积分余额，使用星光卡充值</p>

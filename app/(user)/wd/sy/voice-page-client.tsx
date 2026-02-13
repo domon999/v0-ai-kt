@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { BackButton } from '@/components/wd/back-button'
 import { VoiceList } from '@/components/wd/sy/voice-list'
 import { CloneVoiceDialog } from '@/components/wd/sy/clone-voice-dialog'
 import { TTSPanel } from '@/components/wd/sy/tts-panel'
@@ -60,6 +61,7 @@ export function VoicePageClient({ initialVoices }: VoicePageClientProps) {
 
   return (
     <div className="pb-20 space-y-6">
+      <BackButton />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">声音管理</h1>

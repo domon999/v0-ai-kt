@@ -1,13 +1,41 @@
-import { type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getMinimaxTTSService } from '@/lib/services/minimax-tts-service'
-import { CreditService } from '@/lib/services/credit-service'
-import { ApiResponseHelper } from '@/lib/utils/api-response'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
 export async function POST(request: NextRequest) {
+  console.log('[v0] ========== TTS API CALLED ==========')
+  
+  try {
+    console.log('[v0] Step 1: Parsing request body...')
+    const body = await request.json()
+    console.log('[v0] Body received:', { 
+      hasText: !!body.text, 
+      textLength: body.text?.length,
+      hasVoiceId: !!body.voiceId 
+    })
+    
+    return NextResponse.json({
+      success: false,
+      error: '功能正在维护中，请稍后再试'
+    }, { status: 503 })
+  } catch (error) {
+    console.error('[v0] TTS API ERROR:', error)
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : '未知错误'
+    }, { status: 500 })
+  }
+}
+
+/*
+// 原始代码暂时注释，先确保路由能响应
+import { getMinimaxTTSService } from '@/lib/services/minimax-tts-service'
+import { CreditService } from '@/lib/services/credit-service'
+import { ApiResponseHelper } from '@/lib/utils/api-response'
+
+export async function POST_ORIGINAL(request: NextRequest) {
   console.log('[v0] TTS API called')
   try {
     console.log('[v0] Creating Supabase client...')
@@ -134,3 +162,4 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+*/

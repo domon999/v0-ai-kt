@@ -1,9 +1,11 @@
-import { NextRequest } from 'next/server'
+import { type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { BananaService } from '@/lib/services/banana-service'
+import { getBananaService } from '@/lib/services/banana-service'
 import { CreditService } from '@/lib/services/credit-service'
 import { ApiResponseHelper } from '@/lib/utils/api-response'
-import { validateRequired } from '@/lib/utils/validation'
+
+export const runtime = 'nodejs'
+export const maxDuration = 60
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,53 +19,72 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { image_url, prompt } = body
+    const { prompt, image, backgroundImage, imageUrl, backgroundImageUrl } =
+      body
 
-    // Validate required fields
-    const validation = validateRequired(body, ['image_url'])
-    if (!validation.valid) {
+    // 验证至少有一个输入
+    if (!prompt && !image && !imageUrl) {
       return ApiResponseHelper.validationError(
-        `缺少必填字段: ${validation.missing?.join(', ')}`
+        '请提供提示词、图片或图片URL'
       )
     }
 
-    // Check user credits
-    const requiredCredits = 200
+    // 检查用户积分
+    const requiredCredits = 200 // Banana 图生图消耗 200 积分
     const currentCredits = await CreditService.getUserCredits(user.id)
-    
+
     if (currentCredits < requiredCredits) {
-      return ApiResponseHelper.insufficientCredits(requiredCredits, currentCredits)
+      return ApiResponseHelper.insufficientCredits(
+        requiredCredits,
+        currentCredits
+      )
     }
 
-    // Call Banana API
-    const bananaService = new BananaService()
-    const result = await bananaService.generateDigitalHuman(image_url, prompt)
+    // 调用 Banana API
+    const bananaService = getBananaService()
+    const result = await bananaService.generate({
+      prompt,
+      image,
+      backgroundImage,
+      imageUrl,
+      backgroundImageUrl,
+    })
 
     if (!result.success) {
-      return ApiResponseHelper.serverError(result.error || '数字人生成失败')
+      return ApiResponseHelper.serverError(
+        result.error || 'Banana API 生成失败'
+      )
     }
 
-    // Deduct credits
+    // 扣除积分
     const deductResult = await CreditService.deduct(
       user.id,
       requiredCredits,
-      'digital_human',
-      '数字人生成'
+      'banana_generate',
+      'Banana 图片生成'
     )
 
     if (!deductResult.success) {
-      return ApiResponseHelper.serverError(deductResult.error || '积分扣减失败')
+      return ApiResponseHelper.serverError(
+        deductResult.error || '积分扣减失败'
+      )
     }
 
-    return ApiResponseHelper.success({
-      image_url: result.image_url,
-      credits_used: requiredCredits,
-      remaining_credits: deductResult.newBalance,
-    }, '数字人生成成功')
+    return ApiResponseHelper.success(
+      {
+        content: result.content,
+        imageUrls: result.imageUrls,
+        provider: result.provider,
+        configName: result.configName,
+        creditsUsed: requiredCredits,
+        remainingCredits: deductResult.newBalance,
+      },
+      '图片生成成功'
+    )
   } catch (error) {
-    console.error('[v0] Banana API error:', error)
+    console.error('[v0] Banana generate error:', error)
     return ApiResponseHelper.serverError(
-      error instanceof Error ? error.message : '服务器错误，请稍后重试'
+      error instanceof Error ? error.message : '图片生成失败，请稍后重试'
     )
   }
 }

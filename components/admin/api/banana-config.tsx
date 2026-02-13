@@ -14,41 +14,111 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Edit, Power } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useRouter } from 'next/navigation'
 
 export function BananaConfig({ configs }: { configs: any[] }) {
   const [loading, setLoading] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
+  const [editingConfig, setEditingConfig] = useState<any>(null)
   const [formData, setFormData] = useState({
     config_name: '',
-    base_url: '',
+    base_url: 'https://www.blueshirtmap.com/v1/chat/completions',
     api_key: '',
     priority: 1,
   })
   const { toast } = useToast()
   const router = useRouter()
 
-  const handleSubmit = async () => {
-    setLoading(true)
+  const handleEdit = (config: any) => {
+    setEditingConfig(config)
+    setFormData({
+      config_name: config.config_name,
+      base_url: config.base_url,
+      api_key: config.api_key,
+      priority: config.priority,
+    })
+    setShowDialog(true)
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('确定要删除这个配置吗？')) return
+
     try {
-      const response = await fetch('/api/admin/banana-config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+      const response = await fetch(`/api/admin/banana-config?id=${id}`, {
+        method: 'DELETE',
       })
 
       if (response.ok) {
-        toast({ description: 'Banana 配置添加成功' })
-        setShowDialog(false)
-        setFormData({ config_name: '', base_url: '', api_key: '', priority: 1 })
+        toast({ description: '配置删除成功' })
         router.refresh()
       } else {
-        toast({ description: '添加失败', variant: 'destructive' })
+        toast({ description: '删除失败', variant: 'destructive' })
       }
     } catch (error) {
-      toast({ description: '添加失败', variant: 'destructive' })
+      toast({ description: '删除失败', variant: 'destructive' })
+    }
+  }
+
+  const handleToggleActive = async (config: any) => {
+    try {
+      const response = await fetch('/api/admin/banana-config', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: config.id,
+          is_active: !config.is_active,
+        }),
+      })
+
+      if (response.ok) {
+        toast({ description: '状态更新成功' })
+        router.refresh()
+      } else {
+        toast({ description: '更新失败', variant: 'destructive' })
+      }
+    } catch (error) {
+      toast({ description: '更新失败', variant: 'destructive' })
+    }
+  }
+
+  const handleSubmit = async () => {
+    setLoading(true)
+    try {
+      const isEditing = !!editingConfig
+      const response = await fetch('/api/admin/banana-config', {
+        method: isEditing ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          isEditing ? { id: editingConfig.id, ...formData } : formData
+        ),
+      })
+
+      if (response.ok) {
+        toast({
+          description: isEditing ? '配置更新成功' : 'Banana 配置添加成功',
+        })
+        setShowDialog(false)
+        setEditingConfig(null)
+        setFormData({
+          config_name: '',
+          base_url: 'https://www.blueshirtmap.com/v1/chat/completions',
+          api_key: '',
+          priority: 1,
+        })
+        router.refresh()
+      } else {
+        toast({
+          description: isEditing ? '更新失败' : '添加失败',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      toast({
+        description: editingConfig ? '更新失败' : '添加失败',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }
@@ -69,12 +139,34 @@ export function BananaConfig({ configs }: { configs: any[] }) {
           <Card key={config.id}>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{config.config_name}</CardTitle>
+                <div className="flex items-center gap-3">
+                  <CardTitle className="text-lg">{config.config_name}</CardTitle>
+                  <Badge variant="outline">优先级 {config.priority}</Badge>
+                </div>
                 <div className="flex items-center gap-2">
                   <Badge variant={config.is_active ? 'default' : 'secondary'}>
                     {config.is_active ? '激活' : '未激活'}
                   </Badge>
-                  <Button variant="ghost" size="sm">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleToggleActive(config)}
+                    title={config.is_active ? '停用' : '启用'}
+                  >
+                    <Power className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEdit(config)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(config.id)}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -107,7 +199,9 @@ export function BananaConfig({ configs }: { configs: any[] }) {
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>添加 Banana 配置</DialogTitle>
+            <DialogTitle>
+              {editingConfig ? '编辑 Banana 配置' : '添加 Banana 配置'}
+            </DialogTitle>
             <DialogDescription>填写 Banana API 的配置信息</DialogDescription>
           </DialogHeader>
 
@@ -172,7 +266,13 @@ export function BananaConfig({ configs }: { configs: any[] }) {
               取消
             </Button>
             <Button onClick={handleSubmit} disabled={loading}>
-              {loading ? '添加中...' : '确认添加'}
+              {loading
+                ? editingConfig
+                  ? '更新中...'
+                  : '添加中...'
+                : editingConfig
+                  ? '确认更新'
+                  : '确认添加'}
             </Button>
           </DialogFooter>
         </DialogContent>

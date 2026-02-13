@@ -16,7 +16,7 @@ export interface DeductCreditsResult {
 
 export class CreditService {
   /**
-   * 扣减用户积分并记录流水
+   * 扣减用户积分并记录流水（完整参数）
    */
   static async deductCredits(params: DeductCreditsParams): Promise<DeductCreditsResult> {
     const supabase = await createClient()
@@ -28,7 +28,6 @@ export class CreditService {
         p_amount: params.amount,
         p_type: params.type,
         p_description: params.description,
-        p_metadata: params.metadata || null,
       })
 
       if (error) {
@@ -48,6 +47,18 @@ export class CreditService {
       console.error('[v0] Credit service error:', error)
       return { success: false, error: '系统错误，请稍后重试' }
     }
+  }
+
+  /**
+   * 扣减用户积分（简化方法）
+   */
+  static async deduct(
+    userId: string,
+    amount: number,
+    type: string,
+    description: string
+  ): Promise<DeductCreditsResult> {
+    return this.deductCredits({ userId, amount, type: type as any, description })
   }
 
   /**
@@ -72,6 +83,13 @@ export class CreditService {
       console.error('[v0] Check credits error:', error)
       return false
     }
+  }
+
+  /**
+   * 检查余额（简化方法）
+   */
+  static async checkBalance(userId: string, requiredAmount: number): Promise<boolean> {
+    return this.checkCredits(userId, requiredAmount)
   }
 
   /**

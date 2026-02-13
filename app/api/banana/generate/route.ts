@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { BananaService } from '@/lib/services/banana-service'
+import { CreditService } from '@/lib/services/credit-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,16 +25,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Check user credits
-    const { data: credits } = await supabase
-      .from('user_credits')
-      .select('credits')
-      .eq('user_id', user.id)
-      .single()
-
     const requiredCredits = 200
-    if (!credits || Number(credits.credits) < requiredCredits) {
+    const hasEnough = await CreditService.checkBalance(user.id, requiredCredits)
+    
+    if (!hasEnough) {
       return NextResponse.json(
-        { error: 'Insufficient credits. Need 200 credits for image generation.' },
+        { error: `积分不足，需要 ${requiredCredits} 积分` },
         { status: 402 },
       )
     }
@@ -50,26 +47,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Deduct credits
-    const newBalance = Number(credits.credits) - requiredCredits
-    await supabase
-      .from('user_credits')
-      .update({ credits: newBalance, updated_at: new Date().toISOString() })
-      .eq('user_id', user.id)
+    const deductResult = await CreditService.deduct(
+      user.id,
+      requiredCredits,
+      'digital_human',
+      '数字人生成'
+    )
 
-    // Record usage
-    await supabase.from('credit_usage_records').insert({
-      user_id: user.id,
-      type: '消费',
-      amount: requiredCredits,
-      balance_after: newBalance,
-      description: '图生图 - 生成数字人形象',
-    })
+    if (!deductResult.success) {
+      return NextResponse.json(
+        { error: deductResult.error || '积分扣减失败' },
+        { status: 500 },
+      )
+    }
 
     return NextResponse.json({
       success: true,
       image_url: result.image_url,
       credits_used: requiredCredits,
-      remaining_credits: newBalance,
+      remaining_credits: deductResult.newBalance,
     })
   } catch (error) {
     console.error('[v0] Banana API error:', error)

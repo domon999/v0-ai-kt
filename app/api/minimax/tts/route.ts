@@ -9,14 +9,10 @@ export const maxDuration = 60
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('[v0] POST /api/minimax/tts - Start')
-    
     const supabase = await createClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
-
-    console.log('[v0] User:', { hasUser: !!user })
 
     if (!user) {
       return ApiResponseHelper.unauthorized('请先登录')
@@ -25,17 +21,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { text, voiceId, model, speed, volume, pitch } = body
 
-    console.log('[v0] Request:', { 
-      textLength: text?.length, 
-      voiceId, 
-      model, 
-      speed, 
-      volume, 
-      pitch 
-    })
-
     if (!text || !voiceId) {
-      console.log('[v0] Validation failed - missing required fields')
       return ApiResponseHelper.validationError('缺少必填字段: text, voiceId')
     }
 
@@ -56,10 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 调用 MiniMax API
-    console.log('[v0] Getting MiniMax service...')
     const minimaxService = await getMinimaxService()
-    
-    console.log('[v0] Calling textToSpeech...')
     const result = await minimaxService.textToSpeech({
       text,
       voiceId,
@@ -69,10 +52,7 @@ export async function POST(request: NextRequest) {
       pitch,
     })
 
-    console.log('[v0] TTS result:', { success: result.success, hasData: !!result.data, error: result.error })
-
     if (!result.success) {
-      console.error('[v0] TTS failed:', result.error)
       return ApiResponseHelper.serverError(result.error || 'MiniMax TTS 失败')
     }
 

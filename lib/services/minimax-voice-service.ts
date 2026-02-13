@@ -358,18 +358,13 @@ export class MinimaxVoiceService {
 export async function getMinimaxService(): Promise<MinimaxVoiceService> {
   const supabase = await createClient()
 
-  console.log('[v0] Fetching MiniMax configs...')
-
   const { data: configs, error } = await supabase
     .from('minimax_voice_configs')
     .select('*')
     .eq('enabled', true)
     .order('priority', { ascending: true })
 
-  console.log('[v0] Configs query:', { hasConfigs: !!configs, count: configs?.length, error })
-
   if (error) {
-    console.error('[v0] Config query error:', error)
     throw new Error(`查询配置失败: ${error.message}`)
   }
 
@@ -382,12 +377,10 @@ export async function getMinimaxService(): Promise<MinimaxVoiceService> {
     provider: c.provider,
     apiKey: c.api_key,
     groupId: c.group_id,
-    endpoint: 'https://api.minimaxi.com', // 固定使用官方端点
+    endpoint: 'https://api.minimaxi.com',
     enabled: c.enabled,
     priority: c.priority,
   }))
-
-  console.log('[v0] Service configs:', serviceConfigs.length)
 
   return new MinimaxVoiceService(serviceConfigs)
 }

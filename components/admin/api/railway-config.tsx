@@ -127,7 +127,7 @@ export function RailwayConfig({ configs }: { configs: any[] }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Railway VEO 3.1 配置</h2>
+        <h2 className="text-2xl font-bold">Railway Grok、VEO、Seedance、Sora</h2>
         <Button onClick={() => setShowDialog(true)}>
           <Plus className="mr-2 h-4 w-4" />
           添加配置
@@ -191,7 +191,7 @@ export function RailwayConfig({ configs }: { configs: any[] }) {
             <DialogTitle>
               {editingConfig ? '编辑 Railway 配置' : '添加 Railway 配置'}
             </DialogTitle>
-            <DialogDescription>填写 Railway VEO 3.1 的配置信息</DialogDescription>
+            <DialogDescription>填写 Railway Grok、VEO、Seedance、Sora 的配置信息</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -199,7 +199,7 @@ export function RailwayConfig({ configs }: { configs: any[] }) {
               <Label htmlFor="config_name">配置名称</Label>
               <Input
                 id="config_name"
-                placeholder="例如: Railway VEO 1"
+                placeholder="例如: Railway Grok 1"
                 value={formData.config_name}
                 onChange={(e) =>
                   setFormData({ ...formData, config_name: e.target.value })

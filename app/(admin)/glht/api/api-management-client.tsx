@@ -29,7 +29,7 @@ export function ApiManagementClient({
       <Tabs defaultValue="banana" className="space-y-6">
         <TabsList>
           <TabsTrigger value="banana">Banana 图生图</TabsTrigger>
-          <TabsTrigger value="railway">Railway 视频</TabsTrigger>
+          <TabsTrigger value="railway">Railway Grok、VEO、Seedance、Sora</TabsTrigger>
           <TabsTrigger value="minimax">MiniMax 声音</TabsTrigger>
           <TabsTrigger value="dreamface">DreamFace 唇同步</TabsTrigger>
         </TabsList>

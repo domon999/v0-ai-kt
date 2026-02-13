@@ -4,14 +4,17 @@ import { useState } from 'react'
 import { Upload, Image as ImageIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { useFileUpload } from '@/hooks/use-file-upload'
+import { useToast } from '@/hooks/use-toast'
 
 interface UploadStepProps {
   onUploadComplete: (imageUrl: string) => void
 }
 
 export function UploadStep({ onUploadComplete }: UploadStepProps) {
-  const [uploading, setUploading] = useState(false)
   const [preview, setPreview] = useState<string | null>(null)
+  const { upload, isUploading, progress } = useFileUpload()
+  const { toast } = useToast()
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -22,26 +25,21 @@ export function UploadStep({ onUploadComplete }: UploadStepProps) {
     reader.onload = (e) => setPreview(e.target?.result as string)
     reader.readAsDataURL(file)
 
-    // Upload
-    setUploading(true)
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
+    // Upload with validation
+    const result = await upload(file, {
+      maxSize: 10 * 1024 * 1024, // 10MB
+      allowedTypes: ['image/jpeg', 'image/jpg', 'image/png'],
+    })
 
-      const response = await fetch('/api/storage/upload', {
-        method: 'POST',
-        body: formData,
+    if (result.success && result.url) {
+      toast({ description: '图片上传成功！' })
+      onUploadComplete(result.url)
+    } else {
+      toast({
+        description: result.error || '上传失败，请重试',
+        variant: 'destructive',
       })
-
-      if (!response.ok) throw new Error('Upload failed')
-
-      const data = await response.json()
-      onUploadComplete(data.url)
-    } catch (error) {
-      console.error('Upload error:', error)
-      alert('上传失败，请重试')
-    } finally {
-      setUploading(false)
+      setPreview(null)
     }
   }
 
@@ -76,15 +74,23 @@ export function UploadStep({ onUploadComplete }: UploadStepProps) {
                 className="hidden"
                 accept="image/*"
                 onChange={handleFileChange}
-                disabled={uploading}
+                disabled={isUploading}
               />
             </label>
           )}
 
-          {uploading && (
-            <p className="text-center text-sm text-muted-foreground">
-              上传中...
-            </p>
+          {isUploading && (
+            <div className="space-y-2">
+              <p className="text-center text-sm text-muted-foreground">
+                上传中... {Math.round(progress)}%
+              </p>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full bg-primary transition-all duration-300"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
           )}
         </div>
       </CardContent>

@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Film, Mic, ImageIcon, Coins, KeyRound, LogOut } from 'lucide-react'
+import { Film, Mic, ImageIcon, Coins, KeyRound, LogOut, Video } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -23,6 +23,13 @@ export function MenuGrid() {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const menuItems = [
+    {
+      label: '口播合成',
+      icon: Video,
+      href: '/wd/kbhc',
+      color: 'text-pink-500',
+      bg: 'bg-pink-500/10',
+    },
     {
       label: '我的作品',
       icon: Film,

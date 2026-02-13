@@ -8,11 +8,15 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 export async function POST(request: NextRequest) {
+  console.log('[v0] TTS API called')
   try {
+    console.log('[v0] Creating Supabase client...')
     const supabase = await createClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
+
+    console.log('[v0] User check:', { hasUser: !!user })
 
     if (!user) {
       return ApiResponseHelper.unauthorized('请先登录')
@@ -21,7 +25,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { text, voiceId, model, speed, volume, pitch } = body
 
+    console.log('[v0] Request params:', { textLength: text?.length, voiceId, model })
+
     if (!text || !voiceId) {
+      console.log('[v0] Validation failed')
       return ApiResponseHelper.validationError('缺少必填字段: text, voiceId')
     }
 
@@ -42,7 +49,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 调用 MiniMax API
+    console.log('[v0] Getting MiniMax service...')
     const minimaxService = await getMinimaxService()
+    console.log('[v0] Service obtained, calling textToSpeech...')
     const result = await minimaxService.textToSpeech({
       text,
       voiceId,
@@ -52,7 +61,10 @@ export async function POST(request: NextRequest) {
       pitch,
     })
 
+    console.log('[v0] TTS result:', { success: result.success, error: result.error })
+
     if (!result.success) {
+      console.error('[v0] TTS failed:', result.error)
       return ApiResponseHelper.serverError(result.error || 'MiniMax TTS 失败')
     }
 
@@ -91,6 +103,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    console.log('[v0] TTS success, returning response')
     return ApiResponseHelper.success(
       {
         audioUrl: result.data.audioUrl,
@@ -104,6 +117,7 @@ export async function POST(request: NextRequest) {
     )
   } catch (error) {
     console.error('[v0] MiniMax TTS error:', error)
+    console.error('[v0] Error stack:', error instanceof Error ? error.stack : 'No stack')
     return ApiResponseHelper.serverError(
       error instanceof Error ? error.message : 'TTS 生成失败，请稍后重试'
     )

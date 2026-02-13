@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { MinimaxService } from '@/lib/services/minimax-service'
+import { getMinimaxService } from '@/lib/services/minimax-voice-service'
+import { CreditService } from '@/lib/services/credit-service'
+import { ApiResponseHelper } from '@/lib/utils/api-response'
 
-// TTS 价格计算函数：约 10 积分/100字
-function calculateTTSCredits(textLength: number): number {
-  return Math.ceil((textLength / 100) * 10)
-}
+export const runtime = 'nodejs'
+export const maxDuration = 60
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,91 +15,97 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser()
 
     if (!user) {
-      return NextResponse.json({ error: '未登录' }, { status: 401 })
+      return ApiResponseHelper.unauthorized('请先登录')
     }
 
-    const { text, voiceId } = await request.json()
+    const body = await request.json()
+    const { text, voiceId, model, speed, volume, pitch } = body
 
     if (!text || !voiceId) {
-      return NextResponse.json({ error: '缺少必要参数' }, { status: 400 })
+      return ApiResponseHelper.validationError('缺少必填字段: text, voiceId')
     }
 
-    const textLength = text.length
-    const creditsNeeded = calculateTTSCredits(textLength)
+    // 检查文本长度
+    if (text.length > 5000) {
+      return ApiResponseHelper.validationError('文本长度不能超过 5000 字符')
+    }
 
-    // 检查积分余额
-    const { data: credits } = await supabase
-      .from('user_credits')
-      .select('credits')
-      .eq('user_id', user.id)
-      .single()
+    // 检查用户积分
+    const requiredCredits = Math.ceil(text.length / 10) // 每10个字符消耗1积分
+    const currentCredits = await CreditService.getUserCredits(user.id)
 
-    if (!credits || credits.credits < creditsNeeded) {
-      return NextResponse.json(
-        { error: `积分不足，需要 ${creditsNeeded} 积分` },
-        { status: 400 }
+    if (currentCredits < requiredCredits) {
+      return ApiResponseHelper.insufficientCredits(
+        requiredCredits,
+        currentCredits
       )
     }
 
-    // 获取声音记录
-    const { data: voice } = await supabase
-      .from('voices')
-      .select('*')
-      .eq('id', voiceId)
-      .eq('user_id', user.id)
-      .single()
-
-    if (!voice) {
-      return NextResponse.json({ error: '声音不存在或无权访问' }, { status: 404 })
-    }
-
-    // 调用 MiniMax TTS
-    const minimaxService = new MinimaxService()
-    const result = await minimaxService.textToSpeech(text, voice.voice_id)
+    // 调用 MiniMax API
+    const minimaxService = await getMinimaxService()
+    const result = await minimaxService.textToSpeech({
+      text,
+      voiceId,
+      model,
+      speed,
+      volume,
+      pitch,
+    })
 
     if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 500 })
+      return ApiResponseHelper.serverError(result.error || 'MiniMax TTS 失败')
+    }
+
+    // 保存到数据库
+    const { error: insertError } = await supabase
+      .from('minimax_generated_audio')
+      .insert({
+        user_id: user.id,
+        text,
+        voice_id: voiceId,
+        model: model || 'speech-2.6-hd',
+        audio_url: result.data.audioUrl,
+        duration: result.data.duration,
+        speed: speed || 1.0,
+        volume: volume || 1.0,
+        pitch: pitch || 0,
+        provider: result.provider,
+      })
+
+    if (insertError) {
+      console.error('[v0] Failed to save audio:', insertError)
+      // 不阻塞响应
     }
 
     // 扣除积分
-    const { data: consumed } = await supabase.rpc('consume_credits', {
-      p_user_id: user.id,
-      p_amount: creditsNeeded,
-      p_description: `TTS: ${textLength} 字`,
-      p_type: '消费',
-    })
+    const deductResult = await CreditService.deduct(
+      user.id,
+      requiredCredits,
+      'tts',
+      'TTS 语音合成'
+    )
 
-    if (!consumed) {
-      return NextResponse.json({ error: '扣除积分失败' }, { status: 500 })
+    if (!deductResult.success) {
+      return ApiResponseHelper.serverError(
+        deductResult.error || '积分扣减失败'
+      )
     }
 
-    // 保存 TTS 记录
-    await supabase.from('tts_records').insert({
-      user_id: user.id,
-      voice_id: voiceId,
-      text,
-      text_length: textLength,
-      audio_url: result.audioUrl!,
-      credits_used: creditsNeeded,
-    })
-
-    // 更新声音使用统计
-    await supabase
-      .from('voices')
-      .update({
-        last_used_at: new Date().toISOString(),
-        usage_count: voice.usage_count + 1,
-      })
-      .eq('id', voiceId)
-
-    return NextResponse.json({
-      success: true,
-      audioUrl: result.audioUrl,
-      creditsUsed: creditsNeeded,
-      textLength,
-    })
-  } catch (error: any) {
-    console.error('[v0] TTS error:', error)
-    return NextResponse.json({ error: error.message || 'TTS 失败' }, { status: 500 })
+    return ApiResponseHelper.success(
+      {
+        audioUrl: result.data.audioUrl,
+        duration: result.data.duration,
+        subtitles: result.data.subtitles,
+        provider: result.provider,
+        creditsUsed: requiredCredits,
+        remainingCredits: deductResult.newBalance,
+      },
+      'TTS 生成成功'
+    )
+  } catch (error) {
+    console.error('[v0] MiniMax TTS error:', error)
+    return ApiResponseHelper.serverError(
+      error instanceof Error ? error.message : 'TTS 生成失败，请稍后重试'
+    )
   }
 }

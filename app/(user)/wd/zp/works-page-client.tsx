@@ -2,6 +2,9 @@
 
 import { useState } from 'react'
 import { WorkCard } from '@/components/wd/zp/work-card'
+import { EmptyState } from '@/components/ui/empty-state'
+import { Input } from '@/components/ui/input'
+import { Film, Search } from 'lucide-react'
 
 interface Work {
   id: string
@@ -17,6 +20,12 @@ interface WorksPageClientProps {
 
 export function WorksPageClient({ initialWorks }: WorksPageClientProps) {
   const [works, setWorks] = useState<Work[]>(initialWorks)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredWorks = works.filter((work) => {
+    const query = searchQuery.toLowerCase()
+    return work.title?.toLowerCase().includes(query)
+  })
 
   const handleDelete = async (id: string) => {
     const res = await fetch(`/api/works/${id}`, {
@@ -30,31 +39,47 @@ export function WorksPageClient({ initialWorks }: WorksPageClientProps) {
     setWorks(works.filter((w) => w.id !== id))
   }
 
-  if (works.length === 0) {
-    return (
-      <div className="pb-20">
-        <div className="container mx-auto px-4 py-8">
-          <h1 className="text-2xl font-bold mb-6">我的作品</h1>
-          <div className="text-center py-12 text-muted-foreground">
-            <p>暂无作品</p>
-            <p className="text-sm mt-2">完成唇同步后的作品会显示在这里</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="pb-20">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6">我的作品</h1>
-        
+    <div className="space-y-6 pb-20">
+      <div>
+        <h1 className="text-3xl font-bold">我的作品</h1>
+        <p className="text-muted-foreground">查看和管理您的所有作品</p>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="搜索作品标题..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <span className="text-sm text-muted-foreground">
+          共 {filteredWorks.length} 个作品
+        </span>
+      </div>
+
+      {filteredWorks.length === 0 && searchQuery ? (
+        <EmptyState
+          icon={Search}
+          title="未找到匹配的作品"
+          description={`没有找到包含 "${searchQuery}" 的作品`}
+        />
+      ) : filteredWorks.length === 0 ? (
+        <EmptyState
+          icon={Film}
+          title="还没有作品"
+          description="完成口播合成后的作品会显示在这里"
+        />
+      ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {works.map((work) => (
+          {filteredWorks.map((work) => (
             <WorkCard key={work.id} work={work} onDelete={handleDelete} />
           ))}
         </div>
-      </div>
+      )}
     </div>
   )
 }

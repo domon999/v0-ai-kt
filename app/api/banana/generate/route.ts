@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { BananaService } from '@/lib/services/banana-service'
 import { CreditService } from '@/lib/services/credit-service'
+import { ApiResponseHelper } from '@/lib/utils/api-response'
+import { validateRequired } from '@/lib/utils/validation'
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,28 +13,26 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser()
 
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiResponseHelper.unauthorized('请先登录')
     }
 
     const body = await request.json()
     const { image_url, prompt } = body
 
-    if (!image_url) {
-      return NextResponse.json(
-        { error: 'image_url is required' },
-        { status: 400 },
+    // Validate required fields
+    const validation = validateRequired(body, ['image_url'])
+    if (!validation.valid) {
+      return ApiResponseHelper.validationError(
+        `缺少必填字段: ${validation.missing?.join(', ')}`
       )
     }
 
     // Check user credits
     const requiredCredits = 200
-    const hasEnough = await CreditService.checkBalance(user.id, requiredCredits)
+    const currentCredits = await CreditService.getUserCredits(user.id)
     
-    if (!hasEnough) {
-      return NextResponse.json(
-        { error: `积分不足，需要 ${requiredCredits} 积分` },
-        { status: 402 },
-      )
+    if (currentCredits < requiredCredits) {
+      return ApiResponseHelper.insufficientCredits(requiredCredits, currentCredits)
     }
 
     // Call Banana API
@@ -40,10 +40,7 @@ export async function POST(request: NextRequest) {
     const result = await bananaService.generateDigitalHuman(image_url, prompt)
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: result.error || 'Failed to generate digital human' },
-        { status: 500 },
-      )
+      return ApiResponseHelper.serverError(result.error || '数字人生成失败')
     }
 
     // Deduct credits
@@ -55,26 +52,18 @@ export async function POST(request: NextRequest) {
     )
 
     if (!deductResult.success) {
-      return NextResponse.json(
-        { error: deductResult.error || '积分扣减失败' },
-        { status: 500 },
-      )
+      return ApiResponseHelper.serverError(deductResult.error || '积分扣减失败')
     }
 
-    return NextResponse.json({
-      success: true,
+    return ApiResponseHelper.success({
       image_url: result.image_url,
       credits_used: requiredCredits,
       remaining_credits: deductResult.newBalance,
-    })
+    }, '数字人生成成功')
   } catch (error) {
     console.error('[v0] Banana API error:', error)
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : 'Internal server error',
-      },
-      { status: 500 },
+    return ApiResponseHelper.serverError(
+      error instanceof Error ? error.message : '服务器错误，请稍后重试'
     )
   }
 }

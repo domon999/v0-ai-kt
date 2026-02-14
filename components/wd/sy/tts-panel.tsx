@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AudioPlayer } from './audio-player'
 import { Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
@@ -19,18 +19,6 @@ interface TTSPanelProps {
   voices: Voice[]
 }
 
-// MiniMax 官方预设声音（根据官方文档）
-const OFFICIAL_VOICES = [
-  { id: 'male-qn-qingse', name: '青涩青年音色' },
-  { id: 'male-qn-jingying', name: '精英青年音色' },
-  { id: 'male-qn-badao', name: '霸道青年音色' },
-  { id: 'male-qn-daxuesheng', name: '青年大学生音色' },
-  { id: 'female-shaonv', name: '少女音色' },
-  { id: 'female-yujie', name: '御姐音色' },
-  { id: 'female-chengshu', name: '成熟女性音色' },
-  { id: 'female-tianmei', name: '甜美女性音色' },
-]
-
 export function TTSPanel({ voices }: TTSPanelProps) {
   const [text, setText] = useState('')
   const [selectedVoiceId, setSelectedVoiceId] = useState('')
@@ -38,7 +26,7 @@ export function TTSPanel({ voices }: TTSPanelProps) {
   const [isGenerating, setIsGenerating] = useState(false)
   const { toast } = useToast()
 
-  const estimatedCredits = Math.ceil(text.length / 10) // 每10个字符消耗1积分
+  const estimatedCredits = Math.ceil(text.length / 100) * 10
 
   const handleGenerate = async () => {
     if (!text.trim()) {
@@ -99,25 +87,11 @@ export function TTSPanel({ voices }: TTSPanelProps) {
               <SelectValue placeholder="选择声音模型" />
             </SelectTrigger>
             <SelectContent>
-              <SelectGroup>
-                <SelectLabel>官方声音</SelectLabel>
-                {OFFICIAL_VOICES.map((voice) => (
-                  <SelectItem key={voice.id} value={voice.id}>
-                    {voice.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-              
-              {voices.length > 0 && (
-                <SelectGroup>
-                  <SelectLabel>我的声音</SelectLabel>
-                  {voices.map((voice) => (
-                    <SelectItem key={voice.id} value={voice.voice_id}>
-                      {voice.voice_name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              )}
+              {voices.map((voice) => (
+                <SelectItem key={voice.id} value={voice.id}>
+                  {voice.voice_name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

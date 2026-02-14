@@ -51,7 +51,6 @@ export async function POST(req: NextRequest) {
     const {
       data: { user },
     } = await supabase.auth.getUser()
-
     if (!user) {
       return ApiResponseHelper.unauthorized('请先登录')
     }
@@ -67,11 +66,11 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { config_name, api_key, base_url, priority } = body
+    const { config_name, api_key, base_url, model_key, priority, notes } = body
 
     // 验证必填字段
-    if (!config_name || !api_key) {
-      return ApiResponseHelper.validationError('配置名称和 API Key 是必填项')
+    if (!config_name || !api_key || !base_url) {
+      return ApiResponseHelper.validationError('配置名称、API Key 和 Base URL 是必填项')
     }
 
     // 插入新配置
@@ -81,15 +80,15 @@ export async function POST(req: NextRequest) {
         config_name,
         api_key,
         base_url: base_url || 'https://www.blueshirtmap.com/v1/chat/completions',
-        model_key: 'gemini-3-pro-image-preview',
+        model_key: model_key || 'gemini-3-pro-image-preview',
         priority: priority || 1,
+        notes: notes || '',
         is_active: true,
       })
       .select()
       .single()
 
     if (error) {
-      console.error('[v0] Database error:', error)
       return ApiResponseHelper.serverError(`添加配置失败: ${error.message}`)
     }
 
@@ -124,7 +123,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { id, config_name, api_key, base_url, priority, is_active } = body
+    const { id, config_name, api_key, base_url, model_key, priority, notes, is_active } = body
 
     if (!id) {
       return ApiResponseHelper.validationError('配置 ID 是必填项')
@@ -136,9 +135,11 @@ export async function PATCH(req: NextRequest) {
     }
 
     if (config_name !== undefined) updateData.config_name = config_name
-    if (api_key !== undefined && api_key !== '') updateData.api_key = api_key // 只在提供新密钥时更新
+    if (api_key !== undefined) updateData.api_key = api_key
     if (base_url !== undefined) updateData.base_url = base_url
+    if (model_key !== undefined) updateData.model_key = model_key
     if (priority !== undefined) updateData.priority = priority
+    if (notes !== undefined) updateData.notes = notes
     if (is_active !== undefined) updateData.is_active = is_active
 
     const { data, error } = await supabase

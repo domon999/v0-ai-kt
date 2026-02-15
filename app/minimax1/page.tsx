@@ -142,7 +142,19 @@ export default function Minimax1Page() {
     setAsyncAudio('')
 
     try {
-      console.log('[v0] 创建异步任务:', { model: asyncModel, voice: asyncVoice, textLength: asyncText.length })
+      console.log('[v0] ========== 创建异步任务 ==========')
+      console.log('[v0] asyncVoice 值:', asyncVoice)
+      console.log('[v0] asyncVoice 类型:', typeof asyncVoice)
+      console.log('[v0] asyncVoice 长度:', asyncVoice?.length)
+      console.log('[v0] 请求参数:', { model: asyncModel, voice_id: asyncVoice, textLength: asyncText.length })
+
+      const requestBody = {
+        model: asyncModel,
+        text: asyncText,
+        voice_id: asyncVoice,
+      }
+      
+      console.log('[v0] 完整请求体:', JSON.stringify(requestBody, null, 2))
 
       const response = await fetch('/api/minimax/async/create', {
         method: 'POST',
@@ -151,11 +163,7 @@ export default function Minimax1Page() {
           'X-API-Key': apiKey,
           'X-Group-ID': groupId,
         },
-        body: JSON.stringify({
-          model: asyncModel,
-          text: asyncText,
-          voice_id: asyncVoice,
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       const data = await response.json()

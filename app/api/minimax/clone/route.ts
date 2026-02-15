@@ -1,128 +1,59 @@
-import { type NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { getMinimaxService } from '@/lib/services/minimax-voice-service'
-import { CreditService } from '@/lib/services/credit-service'
-import { ApiResponseHelper } from '@/lib/utils/api-response'
+import { NextRequest, NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const apiKey = req.headers.get('x-api-key') || process.env.MINIMAX_API_KEY
 
-    if (!user) {
-      return ApiResponseHelper.unauthorized('请先登录')
+    if (!apiKey) {
+      return NextResponse.json({ error: '缺少 API Key' }, { status: 400 })
     }
 
-    const formData = await request.formData()
-    const file = formData.get('file') as File
-    const voiceId = formData.get('voiceId') as string
-    const voiceName = formData.get('voiceName') as string
-    const needNoiseReduction = formData.get('needNoiseReduction') === 'true'
-    const needVolumeNormalization =
-      formData.get('needVolumeNormalization') === 'true'
+    const body = await req.json()
+    const { file_id, voice_id, clone_prompt, text, model } = body
 
-    if (!file || !voiceId || !voiceName) {
-      return ApiResponseHelper.validationError('缺少必填字段')
-    }
-
-    // 检查 voiceId 格式
-    if (!/^[a-zA-Z][a-zA-Z0-9]{7,}$/.test(voiceId)) {
-      return ApiResponseHelper.validationError(
-        'Voice ID 必须以字母开头，至少8个字符，只包含字母和数字'
-      )
-    }
-
-    // 检查是否已存在
-    const { data: existing } = await supabase
-      .from('minimax_cloned_voices')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('voice_id', voiceId)
-      .single()
-
-    if (existing) {
-      return ApiResponseHelper.validationError('该 Voice ID 已存在')
-    }
-
-    // 检查用户积分
-    const requiredCredits = 500 // 声音克隆消耗 500 积分
-    const currentCredits = await CreditService.getUserCredits(user.id)
-
-    if (currentCredits < requiredCredits) {
-      return ApiResponseHelper.insufficientCredits(
-        requiredCredits,
-        currentCredits
-      )
-    }
-
-    // 调用 MiniMax API
-    const minimaxService = await getMinimaxService()
-    const result = await minimaxService.cloneVoice({
-      file,
-      voiceId,
-      voiceName,
-      needNoiseReduction,
-      needVolumeNormalization,
+    console.log('[v0] MiniMax voice clone:', {
+      file_id,
+      voice_id,
+      hasPrompt: !!clone_prompt,
+      textLength: text?.length,
     })
 
-    if (!result.success) {
-      return ApiResponseHelper.serverError(
-        result.error || 'MiniMax API 克隆失败'
-      )
-    }
-
-    // 保存到数据库
-    const { error: insertError } = await supabase
-      .from('minimax_cloned_voices')
-      .insert({
-        user_id: user.id,
-        name: voiceName,
-        voice_id: voiceId,
-        file_id: result.data.fileId,
-        need_noise_reduction: needNoiseReduction,
-        need_volume_normalization: needVolumeNormalization,
-        demo_audio_url: result.data.demoAudioUrl,
-        provider: result.provider,
-      })
-
-    if (insertError) {
-      return ApiResponseHelper.serverError('保存声音失败: ' + insertError.message)
-    }
-
-    // 扣除积分
-    const deductResult = await CreditService.deduct(
-      user.id,
-      requiredCredits,
-      'voice_clone',
-      '声音克隆'
-    )
-
-    if (!deductResult.success) {
-      return ApiResponseHelper.serverError(
-        deductResult.error || '积分扣减失败'
-      )
-    }
-
-    return ApiResponseHelper.success(
-      {
-        voiceId,
-        voiceName,
-        demoAudioUrl: result.data.demoAudioUrl,
-        provider: result.provider,
-        creditsUsed: requiredCredits,
-        remainingCredits: deductResult.newBalance,
+    const response = await fetch('https://api.minimaxi.com/v1/voice_clone', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
       },
-      '声音克隆成功'
-    )
+      body: JSON.stringify({
+        file_id,
+        voice_id,
+        ...(clone_prompt && { clone_prompt }),
+        text: text || '这是克隆的声音测试',
+        model: model || 'speech-2.8-hd',
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error('[v0] Clone error:', errorData)
+      return NextResponse.json(errorData, { status: response.status })
+    }
+
+    // 返回音频流
+    return new NextResponse(response.body, {
+      headers: {
+        'Content-Type': 'audio/mpeg',
+        'Content-Disposition': `attachment; filename="${voice_id}.mp3"`,
+      },
+    })
   } catch (error) {
-    console.error('[v0] MiniMax clone error:', error)
-    return ApiResponseHelper.serverError(
-      error instanceof Error ? error.message : '声音克隆失败，请稍后重试'
+    console.error('[v0] Clone API error:', error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : '音色复刻失败' },
+      { status: 500 }
     )
   }
 }

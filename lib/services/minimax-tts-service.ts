@@ -57,11 +57,19 @@ export class MinimaxTTSService {
         const requestBody = {
           model: model || 'speech-2.8-hd',
           text,
-          voice_id: voiceId,
-          speed: speed || 1.0,
-          vol: volume || 1.0,
-          pitch: pitch || 0,
-          ...(config.group_id && { group_id: config.group_id }),
+          ...(config.group_id && { GroupID: config.group_id }),
+          voice_setting: {
+            voice_id: voiceId,
+            speed: speed || 1.0,
+            vol: volume || 10,
+            pitch: pitch || 0,
+          },
+          audio_setting: {
+            audio_sample_rate: 32000,
+            bitrate: 128000,
+            format: 'mp3',
+            channel: 2,
+          },
         }
 
         console.log('[v0] Request body:', { ...requestBody, text: `${text.substring(0, 50)}...` })

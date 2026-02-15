@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
         pitch: pitch || 0,
         audio_sample_rate: 32000,
         bitrate: 128000,
+        format: 'mp3',
       }),
     })
 
@@ -48,12 +49,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 返回音频流
-    const audioBuffer = await response.arrayBuffer()
+    // MiniMax API 返回 JSON 格式，包含 base64 编码的音频
+    const data = await response.json()
+    console.log('[v0] 合成成功，返回数据包含 audio:', !!data.data?.audio)
+
+    if (!data.data?.audio) {
+      return NextResponse.json({ error: '未返回音频数据' }, { status: 500 })
+    }
+
+    // 解码 Base64 音频数据
+    const audioBuffer = Buffer.from(data.data.audio, 'base64')
+
+    // 返回音频流（不存储到 blob）
     return new NextResponse(audioBuffer, {
       headers: {
         'Content-Type': 'audio/mpeg',
-        'Content-Disposition': 'attachment; filename="audio.mp3"',
+        'Content-Disposition': 'inline; filename="tts-audio.mp3"',
+        'Cache-Control': 'public, max-age=3600',
+        'Access-Control-Allow-Origin': '*',
       },
     })
   } catch (error) {

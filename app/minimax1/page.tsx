@@ -196,7 +196,9 @@ export default function Minimax1Page() {
         setAsyncStatus(data.status)
 
         if (data.status === 'Success') {
-          setAsyncAudio(data.audio_file)
+          // 使用代理 API 获取音频
+          const proxyUrl = `/api/minimax/audio?file_id=${data.audio_file}&api_key=${apiKey}`
+          setAsyncAudio(proxyUrl)
           clearInterval(interval)
           setPolling(false)
           toast({ description: '语音合成完成！' })
@@ -301,7 +303,9 @@ export default function Minimax1Page() {
         throw new Error(cloneData.error || '音色复刻失败')
       }
 
-      setCloneAudio(cloneData.audio_file)
+      // 使用代理 API 获取音频
+      const proxyUrl = `/api/minimax/audio?file_id=${cloneData.audio_file}&api_key=${apiKey}`
+      setCloneAudio(proxyUrl)
       toast({ description: `音色复刻成功！音色ID: ${cloneData.voice_id}` })
     } catch (error) {
       console.error('[v0] 音色复刻失败:', error)

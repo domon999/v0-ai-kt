@@ -39,6 +39,8 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json()
 
+    console.log('[v0] MiniMax 响应:', JSON.stringify(data).substring(0, 200))
+
     if (!response.ok || data.base_resp?.status_code !== 0) {
       console.error('[v0] MiniMax API 错误:', data)
       return NextResponse.json(
@@ -47,8 +49,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // 根据文档，返回的是 data.task_id
+    const taskId = data.data?.task_id || data.task_id
+    
+    if (!taskId) {
+      console.error('[v0] 未返回 task_id，完整响应:', JSON.stringify(data))
+      return NextResponse.json(
+        { error: '未返回任务ID' },
+        { status: 500 }
+      )
+    }
+
     return NextResponse.json({
-      task_id: data.task_id,
+      task_id: taskId,
       status: 'Submitted',
     })
   } catch (error) {

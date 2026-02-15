@@ -51,14 +51,28 @@ export async function POST(request: NextRequest) {
 
     // MiniMax API 返回 JSON 格式，包含 base64 编码的音频
     const data = await response.json()
-    console.log('[v0] 合成成功，返回数据包含 audio:', !!data.data?.audio)
+    
+    console.log('[v0] MiniMax 完整响应结构:', {
+      hasData: !!data.data,
+      hasAudio: !!data.data?.audio,
+      hasExtraAudioParts: !!data.extra_audio_parts,
+      baseRespStatus: data.base_resp?.status_code,
+      keys: Object.keys(data)
+    })
 
-    if (!data.data?.audio) {
-      return NextResponse.json({ error: '未返回音频数据' }, { status: 500 })
+    // 根据实际API响应调整路径
+    const audioData = data.data?.audio || data.audio
+    
+    if (!audioData) {
+      console.error('[v0] 未找到音频数据，完整响应前200字符:', JSON.stringify(data).substring(0, 200))
+      return NextResponse.json({ 
+        error: '未返回音频数据',
+        debug: { hasData: !!data.data, keys: Object.keys(data) }
+      }, { status: 500 })
     }
 
     // 解码 Base64 音频数据
-    const audioBuffer = Buffer.from(data.data.audio, 'base64')
+    const audioBuffer = Buffer.from(audioData, 'base64')
 
     // 返回音频流（不存储到 blob）
     return new NextResponse(audioBuffer, {

@@ -1,16 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
-import { put } from '@vercel/blob'
 
 /**
- * MiniMax TTS 服务
- * 基于官方文档实现：https://platform.minimax.io/docs
+ * MiniMax 语音合成服务
+ * 官方文档: https://platform.minimaxi.com/document/T2A%20V2
  */
 
 interface MinimaxConfig {
   id: string
   provider: string
-  api_key: string
-  group_id?: string
+  apiKey: string
+  groupId?: string
   priority: number
   enabled: boolean
 }
@@ -28,7 +27,7 @@ interface TTSResult {
   success: boolean
   data?: {
     audioUrl: string
-    duration?: number
+    duration: number
     subtitles?: any[]
   }
   error?: string
@@ -37,146 +36,88 @@ interface TTSResult {
 
 export class MinimaxTTSService {
   private configs: MinimaxConfig[]
-  private apiEndpoint = 'https://api.minimaxi.com/v1/t2a_v2'
 
   constructor(configs: MinimaxConfig[]) {
     this.configs = configs.sort((a, b) => a.priority - b.priority)
   }
 
   /**
-   * 文本转语音（同步）
+   * 同步语音合成（HTTP）
    */
   async textToSpeech(params: TTSParams): Promise<TTSResult> {
     const { text, voiceId, model, speed, volume, pitch } = params
 
-    // 防御性检查：确保 voice_id 存在
-    if (!voiceId || voiceId.trim() === '') {
-      return {
-        success: false,
-        error: '前端未提供有效的 voice_id，请选择一个声音',
-      }
-    }
-
     // 尝试所有配置直到成功
     for (const config of this.configs) {
       try {
-        console.log('[v0] Trying MiniMax config:', config.provider)
+        console.log(`[MiniMax] 尝试配置: ${config.provider}`)
 
-        const requestBody = {
-          model: model || 'speech-2.8-hd',
-          text,
-          ...(config.group_id && { GroupID: config.group_id }),
-          voice_setting: {
-            voice_id: voiceId,
-            speed: speed || 1,
-            vol: volume || 10,
-            pitch: pitch || 1,
-          },
-          audio_setting: {
-            sample_rate: 32000,
-            bitrate: 128000,
-            format: 'mp3',
-            channel: 2,
-          },
-        }
-
-        console.log('[v0] Request body:', JSON.stringify(requestBody, null, 2))
-
-        const response = await fetch(this.apiEndpoint, {
+        const response = await fetch('https://api.minimaxi.com/v1/t2a_v2', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${config.api_key}`,
+            'Authorization': `Bearer ${config.apiKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(requestBody),
+          body: JSON.stringify({
+            model: model || 'speech-2.8-hd',
+            text,
+            stream: false,
+            voice_setting: {
+              voice_id: voiceId,
+              speed: speed || 1.0,
+              vol: volume || 1.0,
+              pitch: pitch || 0,
+            },
+            audio_setting: {
+              sample_rate: 32000,
+              bitrate: 128000,
+              format: 'mp3',
+              channel: 1,
+            },
+          }),
         })
-
-        console.log('[v0] Response status:', response.status)
 
         if (!response.ok) {
-          const errorText = await response.text()
-          console.error('[v0] MiniMax API Error Response:', {
-            status: response.status,
-            statusText: response.statusText,
-            body: errorText,
-            headers: Object.fromEntries(response.headers.entries()),
-          })
-          
-          // 尝试解析 JSON 错误信息
-          try {
-            const errorJson = JSON.parse(errorText)
-            const errorMessage = errorJson.base_resp?.status_msg || errorJson.message || errorText
-            throw new Error(`MiniMax API 错误: ${errorMessage}`)
-          } catch {
-            throw new Error(`HTTP ${response.status}: ${errorText}`)
-          }
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.base_resp?.status_msg || `HTTP ${response.status}`)
         }
 
-        const contentType = response.headers.get('content-type')
-        console.log('[v0] Content-Type:', contentType)
+        const data = await response.json()
 
-        let audioBuffer: Buffer
-
-        // 处理不同的响应格式
-        if (contentType?.includes('application/json')) {
-          const jsonData = await response.json()
-          console.log('[v0] JSON response:', jsonData)
-
-          if (jsonData.base_resp?.status_code !== 0) {
-            throw new Error(jsonData.base_resp?.status_msg || 'API返回错误')
-          }
-
-          // 从JSON中获取Base64音频数据
-          if (jsonData.data?.audio) {
-            audioBuffer = Buffer.from(jsonData.data.audio, 'base64')
-          } else if (jsonData.audio) {
-            audioBuffer = Buffer.from(jsonData.audio, 'base64')
-          } else {
-            throw new Error('响应中未找到音频数据')
-          }
-        } else {
-          // 直接返回音频流
-          const arrayBuffer = await response.arrayBuffer()
-          audioBuffer = Buffer.from(arrayBuffer)
+        // MiniMax返回base64编码的音频
+        if (!data.data || !data.data.audio) {
+          throw new Error('响应中缺少音频数据')
         }
 
-        console.log('[v0] Audio buffer size:', audioBuffer.length)
+        // 将base64音频转换为Blob并上传到存储
+        const audioBase64 = data.data.audio
+        const audioBuffer = Buffer.from(audioBase64, 'base64')
+        
+        // 上传到Vercel Blob
+        const audioUrl = await this.uploadAudio(audioBuffer, config.provider)
 
-        // 上传到 Vercel Blob
-        const filename = `minimax-tts-${Date.now()}.mp3`
-        const blob = await put(filename, audioBuffer, {
-          access: 'public',
-          contentType: 'audio/mpeg',
-        })
-
-        console.log('[v0] Uploaded to Blob:', blob.url)
-
-        // 更新成功统计
-        await this.updateStats(config.id, true)
+        await this.recordSuccess(config.id)
 
         return {
           success: true,
           data: {
-            audioUrl: blob.url,
-            duration: undefined,
-            subtitles: [],
+            audioUrl,
+            duration: data.data.audio_time || 0,
+            subtitles: data.data.subtitles || [],
           },
           provider: config.provider,
         }
       } catch (error) {
-        console.error(`[v0] Config ${config.provider} failed:`, error)
-        await this.updateStats(config.id, false)
+        console.error(`[MiniMax] 配置 ${config.provider} 失败:`, error)
+        await this.recordFailure(config.id)
 
         // 如果是最后一个配置，返回错误
         if (config === this.configs[this.configs.length - 1]) {
           return {
             success: false,
-            error: error instanceof Error ? error.message : 'TTS合成失败',
+            error: error instanceof Error ? error.message : 'TTS 合成失败',
           }
         }
-
-        // 否则尝试下一个配置
-        console.log('[v0] Trying next config...')
       }
     }
 
@@ -187,16 +128,30 @@ export class MinimaxTTSService {
   }
 
   /**
-   * 更新统计信息
+   * 上传音频到 Vercel Blob
    */
-  private async updateStats(configId: string, success: boolean) {
+  private async uploadAudio(audioBuffer: Buffer, provider: string): Promise<string> {
+    const { put } = await import('@vercel/blob')
+    
+    const filename = `minimax-tts-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.mp3`
+    
+    const blob = await put(filename, audioBuffer, {
+      access: 'public',
+      contentType: 'audio/mpeg',
+    })
+
+    return blob.url
+  }
+
+  /**
+   * 记录成功
+   */
+  private async recordSuccess(configId: string) {
     try {
       const supabase = await createClient()
-      const field = success ? 'success_requests' : 'failed_requests'
-
       const { data: config } = await supabase
         .from('minimax_voice_configs')
-        .select(field)
+        .select('success_requests')
         .eq('id', configId)
         .single()
 
@@ -204,19 +159,45 @@ export class MinimaxTTSService {
         await supabase
           .from('minimax_voice_configs')
           .update({
-            [field]: (config[field] || 0) + 1,
+            success_requests: config.success_requests + 1,
             updated_at: new Date().toISOString(),
           })
           .eq('id', configId)
       }
     } catch (error) {
-      console.error('[v0] Failed to update stats:', error)
+      console.error('[MiniMax] 记录成功失败:', error)
+    }
+  }
+
+  /**
+   * 记录失败
+   */
+  private async recordFailure(configId: string) {
+    try {
+      const supabase = await createClient()
+      const { data: config } = await supabase
+        .from('minimax_voice_configs')
+        .select('failed_requests')
+        .eq('id', configId)
+        .single()
+
+      if (config) {
+        await supabase
+          .from('minimax_voice_configs')
+          .update({
+            failed_requests: config.failed_requests + 1,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', configId)
+      }
+    } catch (error) {
+      console.error('[MiniMax] 记录失败失败:', error)
     }
   }
 }
 
 /**
- * 获取 MiniMax TTS 服务实例
+ * 获取 MiniMax 服务实例
  */
 export async function getMinimaxTTSService(): Promise<MinimaxTTSService> {
   const supabase = await createClient()
@@ -232,7 +213,7 @@ export async function getMinimaxTTSService(): Promise<MinimaxTTSService> {
   }
 
   if (!configs || configs.length === 0) {
-    throw new Error('没有可用的 MiniMax 配置，请先在管理后台 /glht/api 添加 MiniMax 配置')
+    throw new Error('没有可用的 MiniMax 配置，请先在管理后台添加配置')
   }
 
   return new MinimaxTTSService(configs)

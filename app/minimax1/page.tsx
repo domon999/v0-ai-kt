@@ -159,9 +159,19 @@ export default function Minimax1Page() {
       })
 
       const data = await response.json()
+      
+      console.log('[v0] 异步创建响应:', data)
+      console.log('[v0] task_id:', data.task_id)
+      console.log('[v0] 响应keys:', Object.keys(data))
 
       if (!response.ok) {
+        console.error('[v0] 创建失败:', data)
         throw new Error(data.error || '创建任务失败')
+      }
+
+      if (!data.task_id) {
+        console.error('[v0] 缺少 task_id，完整响应:', JSON.stringify(data, null, 2))
+        throw new Error('服务器未返回任务ID')
       }
 
       setAsyncTaskId(data.task_id)

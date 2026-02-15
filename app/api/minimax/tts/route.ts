@@ -56,6 +56,27 @@ export async function POST(request: NextRequest) {
 
     console.log('[v0] Using config:', configs.provider)
 
+    // 构造符合官方文档的请求体
+    const requestBody = {
+      model: model || 'speech-01-turbo',
+      text,
+      ...(configs.group_id && { GroupID: configs.group_id }),
+      voice_setting: {
+        voice_id: voiceId,
+        speed: speed || 1.0,
+        vol: volume || 1.0,
+        pitch: pitch || 0,
+      },
+      audio_setting: {
+        sample_rate: 32000, // 关键修复：使用 sample_rate 而非 audio_sample_rate
+        bitrate: 128000,
+        format: 'mp3',
+        channel: 2,
+      },
+    }
+
+    console.log('[v0] MiniMax request body:', JSON.stringify(requestBody, null, 2))
+
     // 调用 MiniMax TTS API
     const minimaxResponse = await fetch('https://api.minimaxi.com/v1/t2a_v2', {
       method: 'POST',
@@ -63,20 +84,27 @@ export async function POST(request: NextRequest) {
         'Authorization': `Bearer ${configs.api_key}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: model || 'speech-2.8-hd',
-        text,
-        voice_id: voiceId,
-        speed: speed || 1.0,
-        vol: volume || 1.0,
-        pitch: pitch || 0,
-        format: 'mp3',
-      }),
+      body: JSON.stringify(requestBody),
     })
 
     if (!minimaxResponse.ok) {
       const errorText = await minimaxResponse.text()
-      console.error('[v0] MiniMax API error:', errorText)
+      console.error('[v0] MiniMax API Error Details:', {
+        status: minimaxResponse.status,
+        statusText: minimaxResponse.statusText,
+        responseBody: errorText,
+        headers: Object.fromEntries(minimaxResponse.headers.entries()),
+      })
+      
+      // 尝试解析 JSON 错误
+      let errorMessage = minimaxResponse.statusText
+      try {
+        const errorJson = JSON.parse(errorText)
+        errorMessage = errorJson.base_resp?.status_msg || errorJson.message || errorText
+        console.error('[v0] Parsed error:', errorJson)
+      } catch (e) {
+        console.error('[v0] Failed to parse error as JSON')
+      }
       
       // 记录失败
       await supabase
@@ -88,7 +116,10 @@ export async function POST(request: NextRequest) {
         .eq('id', configs.id)
 
       return NextResponse.json(
-        { error: `MiniMax API 错误: ${minimaxResponse.statusText}` },
+        { 
+          error: `MiniMax API 错误: ${errorMessage}`,
+          details: errorText 
+        },
         { status: 500 }
       )
     }

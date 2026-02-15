@@ -49,30 +49,38 @@ export class MinimaxTTSService {
   async textToSpeech(params: TTSParams): Promise<TTSResult> {
     const { text, voiceId, model, speed, volume, pitch } = params
 
+    // 防御性检查：确保 voice_id 存在
+    if (!voiceId || voiceId.trim() === '') {
+      return {
+        success: false,
+        error: '前端未提供有效的 voice_id，请选择一个声音',
+      }
+    }
+
     // 尝试所有配置直到成功
     for (const config of this.configs) {
       try {
         console.log('[v0] Trying MiniMax config:', config.provider)
 
         const requestBody = {
-          model: model || 'speech-2.8-hd',
+          model: model || 'speech-01-turbo',
           text,
           ...(config.group_id && { GroupID: config.group_id }),
           voice_setting: {
             voice_id: voiceId,
             speed: speed || 1.0,
-            vol: volume || 10,
+            vol: volume || 1.0,
             pitch: pitch || 0,
           },
           audio_setting: {
-            audio_sample_rate: 32000,
+            sample_rate: 32000, // 修正：去掉 audio_ 前缀
             bitrate: 128000,
             format: 'mp3',
             channel: 2,
           },
         }
 
-        console.log('[v0] Request body:', { ...requestBody, text: `${text.substring(0, 50)}...` })
+        console.log('[v0] Request body:', JSON.stringify(requestBody, null, 2))
 
         const response = await fetch(this.apiEndpoint, {
           method: 'POST',
@@ -87,8 +95,21 @@ export class MinimaxTTSService {
 
         if (!response.ok) {
           const errorText = await response.text()
-          console.error('[v0] MiniMax API error:', errorText)
-          throw new Error(`HTTP ${response.status}: ${errorText}`)
+          console.error('[v0] MiniMax API Error Response:', {
+            status: response.status,
+            statusText: response.statusText,
+            body: errorText,
+            headers: Object.fromEntries(response.headers.entries()),
+          })
+          
+          // 尝试解析 JSON 错误信息
+          try {
+            const errorJson = JSON.parse(errorText)
+            const errorMessage = errorJson.base_resp?.status_msg || errorJson.message || errorText
+            throw new Error(`MiniMax API 错误: ${errorMessage}`)
+          } catch {
+            throw new Error(`HTTP ${response.status}: ${errorText}`)
+          }
         }
 
         const contentType = response.headers.get('content-type')

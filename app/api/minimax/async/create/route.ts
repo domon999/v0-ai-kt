@@ -39,27 +39,40 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json()
 
-    console.log('[v0] MiniMax 响应:', JSON.stringify(data).substring(0, 200))
+    console.log('[v0] === 异步任务响应 ===')
+    console.log('[v0] 状态码:', data.base_resp?.status_code)
+    console.log('[v0] 响应keys:', Object.keys(data))
+    console.log('[v0] data keys:', data.data ? Object.keys(data.data) : 'no data')
 
     if (!response.ok || data.base_resp?.status_code !== 0) {
-      console.error('[v0] MiniMax API 错误:', data)
+      console.error('[v0] MiniMax API 错误:', data.base_resp?.status_msg)
       return NextResponse.json(
         { error: data.base_resp?.status_msg || '创建任务失败' },
         { status: response.status }
       )
     }
 
-    // 根据文档，返回的是 data.task_id
+    // 根据文档，task_id 可能在 data.data 或 data 中
     const taskId = data.data?.task_id || data.task_id
     
+    console.log('[v0] 提取的task_id:', taskId)
+    
     if (!taskId) {
-      console.error('[v0] 未返回 task_id，完整响应:', JSON.stringify(data))
+      console.error('[v0] 未返回 task_id')
+      console.error('[v0] 完整响应:', JSON.stringify(data, null, 2))
       return NextResponse.json(
-        { error: '未返回任务ID' },
+        { 
+          error: '未返回任务ID',
+          responseKeys: Object.keys(data),
+          hasData: !!data.data,
+          dataKeys: data.data ? Object.keys(data.data) : []
+        },
         { status: 500 }
       )
     }
 
+    console.log('[v0] 任务创建成功，task_id:', taskId)
+    
     return NextResponse.json({
       task_id: taskId,
       status: 'Submitted',

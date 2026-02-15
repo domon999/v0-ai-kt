@@ -52,27 +52,38 @@ export async function POST(request: NextRequest) {
     // MiniMax API 返回 JSON 格式，包含 base64 编码的音频
     const data = await response.json()
     
-    console.log('[v0] MiniMax 完整响应结构:', {
-      hasData: !!data.data,
-      hasAudio: !!data.data?.audio,
-      hasExtraAudioParts: !!data.extra_audio_parts,
-      baseRespStatus: data.base_resp?.status_code,
-      keys: Object.keys(data)
-    })
+    console.log('[v0] === MiniMax 响应 ===')
+    console.log('[v0] 状态码:', data.base_resp?.status_code)
+    console.log('[v0] 响应keys:', Object.keys(data))
+    console.log('[v0] data keys:', data.data ? Object.keys(data.data) : 'no data')
+    
+    // 检查 API 是否成功
+    if (data.base_resp?.status_code !== 0) {
+      console.error('[v0] API返回错误:', data.base_resp?.status_msg)
+      return NextResponse.json({ 
+        error: data.base_resp?.status_msg || 'API返回错误'
+      }, { status: 400 })
+    }
 
-    // 根据实际API响应调整路径
-    const audioData = data.data?.audio || data.audio
+    // 尝试多种可能的音频数据路径
+    const audioData = data.data?.audio || data.audio || data.data?.extra_audio_parts?.[0]?.audio
     
     if (!audioData) {
-      console.error('[v0] 未找到音频数据，完整响应前200字符:', JSON.stringify(data).substring(0, 200))
+      console.error('[v0] 未找到音频数据')
+      console.error('[v0] 完整响应:', JSON.stringify(data, null, 2).substring(0, 500))
       return NextResponse.json({ 
-        error: '未返回音频数据',
-        debug: { hasData: !!data.data, keys: Object.keys(data) }
+        error: '未返回音频数据，请检查API响应格式',
+        responseKeys: Object.keys(data),
+        hasData: !!data.data,
+        dataKeys: data.data ? Object.keys(data.data) : []
       }, { status: 500 })
     }
 
+    console.log('[v0] 找到音频数据，长度:', audioData.length)
+
     // 解码 Base64 音频数据
     const audioBuffer = Buffer.from(audioData, 'base64')
+    console.log('[v0] 音频buffer大小:', audioBuffer.length, 'bytes')
 
     // 返回音频流（不存储到 blob）
     return new NextResponse(audioBuffer, {

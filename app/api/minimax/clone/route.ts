@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 如果提供了试听文本，生成试听音频
-    let audioUrl = null
+    let audioFile = null
     if (text) {
       console.log('[v0] 生成试听音频...')
       
@@ -77,16 +77,20 @@ export async function POST(request: NextRequest) {
         }),
       })
 
-      if (ttsResponse.ok) {
-        const audioBuffer = await ttsResponse.arrayBuffer()
-        const base64Audio = Buffer.from(audioBuffer).toString('base64')
-        audioUrl = `data:audio/mpeg;base64,${base64Audio}`
+      const ttsData = await ttsResponse.json()
+      
+      if (ttsResponse.ok && ttsData.base_resp?.status_code === 0) {
+        const audioData = ttsData.data?.audio || ttsData.audio
+        if (audioData) {
+          // 返回 base64 编码的音频，前端可以直接播放
+          audioFile = `data:audio/mpeg;base64,${audioData}`
+        }
       }
     }
 
     return NextResponse.json({
       voice_id,
-      audio_file: audioUrl,
+      audio_file: audioFile,
       message: '音色复刻成功',
     })
   } catch (error) {

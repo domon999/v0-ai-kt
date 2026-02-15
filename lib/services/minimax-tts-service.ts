@@ -63,17 +63,17 @@ export class MinimaxTTSService {
         console.log('[v0] Trying MiniMax config:', config.provider)
 
         const requestBody = {
-          model: model || 'speech-01-turbo',
+          model: model || 'speech-2.8-hd',
           text,
           ...(config.group_id && { GroupID: config.group_id }),
           voice_setting: {
             voice_id: voiceId,
-            speed: speed || 1.0,
-            vol: volume || 1.0,
-            pitch: pitch || 0,
+            speed: speed || 1,
+            vol: volume || 10,
+            pitch: pitch || 1,
           },
           audio_setting: {
-            sample_rate: 32000, // 修正：去掉 audio_ 前缀
+            sample_rate: 32000,
             bitrate: 128000,
             format: 'mp3',
             channel: 2,

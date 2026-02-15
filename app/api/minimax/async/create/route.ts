@@ -20,6 +20,17 @@ export async function POST(request: NextRequest) {
 
     console.log('[v0] 创建异步任务:', { model, voice_id, textLength: text.length, groupId })
 
+    const requestBody = {
+      model: model || 'speech-2.8-hd',
+      text,
+      voice_id,
+      audio_sample_rate: 32000,
+      bitrate: 128000,
+      ...(groupId && { GroupId: groupId }),
+    }
+    
+    console.log('[v0] 发送到 MiniMax 的请求体:', JSON.stringify(requestBody, null, 2))
+
     // 调用 MiniMax 异步 API
     const response = await fetch('https://api.minimaxi.com/v1/t2a_async_v2', {
       method: 'POST',
@@ -27,14 +38,7 @@ export async function POST(request: NextRequest) {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: model || 'speech-2.8-hd',
-        text,
-        voice_id,
-        audio_sample_rate: 32000,
-        bitrate: 128000,
-        ...(groupId && { GroupId: groupId }),
-      }),
+      body: JSON.stringify(requestBody),
     })
 
     const data = await response.json()

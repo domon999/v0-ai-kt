@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,7 +18,8 @@ import { Plus, Edit, Trash2, Power } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useRouter } from 'next/navigation'
 
-export function MinimaxConfig({ configs }: { configs: any[] }) {
+export function MinimaxConfig({ configs: initialConfigs }: { configs: any[] }) {
+  const [configs, setConfigs] = useState(initialConfigs)
   const [showDialog, setShowDialog] = useState(false)
   const [loading, setLoading] = useState(false)
   const [editingConfig, setEditingConfig] = useState<any>(null)
@@ -30,6 +31,10 @@ export function MinimaxConfig({ configs }: { configs: any[] }) {
   })
   const { toast } = useToast()
   const router = useRouter()
+
+  useEffect(() => {
+    setConfigs(initialConfigs)
+  }, [initialConfigs])
 
   const handleEdit = (config: any) => {
     setEditingConfig(config)
@@ -52,6 +57,7 @@ export function MinimaxConfig({ configs }: { configs: any[] }) {
 
       if (response.ok) {
         toast({ description: '配置删除成功' })
+        setConfigs(configs.filter(c => c.id !== id))
         router.refresh()
       } else {
         toast({ description: '删除失败', variant: 'destructive' })
@@ -74,6 +80,9 @@ export function MinimaxConfig({ configs }: { configs: any[] }) {
 
       if (response.ok) {
         toast({ description: '状态更新成功' })
+        setConfigs(configs.map(c => 
+          c.id === config.id ? { ...c, enabled: !c.enabled } : c
+        ))
         router.refresh()
       } else {
         toast({ description: '更新失败', variant: 'destructive' })
@@ -105,6 +114,16 @@ export function MinimaxConfig({ configs }: { configs: any[] }) {
         toast({
           description: isEditing ? '配置更新成功' : 'MiniMax 配置添加成功',
         })
+        
+        // 更新本地状态
+        if (isEditing) {
+          setConfigs(configs.map(c => 
+            c.id === editingConfig.id ? responseData.data : c
+          ))
+        } else {
+          setConfigs([...configs, responseData.data])
+        }
+        
         setShowDialog(false)
         setEditingConfig(null)
         setFormData({

@@ -129,14 +129,14 @@ export async function POST(request: NextRequest) {
 
       console.log('[v0] Uploaded to:', blob.url)
 
-      // 返回音频 URL 和元数据，确保正确的 Content-Type
+      // 返回 Blob URL，可直接在 audio 标签中使用
       return new NextResponse(
         JSON.stringify({
           success: true,
           code: 0,
           message: '语音合成成功',
           data: {
-            audio_url: blob.url,
+            audio_url: blob.url, // 直接返回可播放的 URL
             audio_time: data.data.audio_time || 0,
             status: 'success',
           },
@@ -146,21 +146,23 @@ export async function POST(request: NextRequest) {
           headers: {
             'Content-Type': 'application/json; charset=utf-8',
             'Access-Control-Allow-Origin': '*',
-            'Cache-Control': 'public, max-age=3600',
           },
         }
       )
     } catch (uploadError) {
-      console.error('[v0] Upload error:', uploadError)
+      console.error('[v0] Blob upload error:', uploadError)
       
-      // 如果上传失败，返回 base64
+      // 如果上传失败，返回 data URI（base64）
+      const dataUri = `data:audio/mpeg;base64,${audioBase64}`
+      console.log('[v0] Returning base64 data URI, length:', dataUri.length)
+      
       return new NextResponse(
         JSON.stringify({
           success: true,
           code: 0,
           message: '语音合成成功（Base64 格式）',
           data: {
-            audio_data: audioBase64,
+            audio_url: dataUri, // 返回可播放的 data URI
             audio_time: data.data.audio_time || 0,
             status: 'success',
           },

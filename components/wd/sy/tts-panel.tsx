@@ -78,17 +78,14 @@ export function TTSPanel({ voices }: TTSPanelProps) {
       const data = await response.json()
       console.log('[v0] Response data:', data)
 
-      // 获取音频 URL（支持 audio_url 或 audio_data）
-      let audioSrc = ''
-      if (data.data?.audio_url) {
-        audioSrc = data.data.audio_url
-        console.log('[v0] Using audio_url:', audioSrc)
-      } else if (data.data?.audio_data) {
-        audioSrc = `data:audio/mpeg;base64,${data.data.audio_data}`
-        console.log('[v0] Using base64 audio_data')
-      } else {
-        throw new Error('响应中缺少音频数据（audio_url 或 audio_data）')
+      // 验证响应格式
+      if (!data.data?.audio_url) {
+        console.error('[v0] Invalid response format:', data)
+        throw new Error('响应格式错误，缺少 audio_url')
       }
+
+      const audioSrc = data.data.audio_url
+      console.log('[v0] Setting audio URL, starts with:', audioSrc.substring(0, 50))
 
       setAudioUrl(audioSrc)
       

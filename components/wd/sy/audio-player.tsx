@@ -17,6 +17,7 @@ export function AudioPlayer({ audioUrl, className }: AudioPlayerProps) {
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(1)
   const [isMuted, setIsMuted] = useState(false)
+  const [error, setError] = useState<string>('')
 
   useEffect(() => {
     const audio = audioRef.current
@@ -25,15 +26,22 @@ export function AudioPlayer({ audioUrl, className }: AudioPlayerProps) {
     const updateTime = () => setCurrentTime(audio.currentTime)
     const updateDuration = () => setDuration(audio.duration)
     const handleEnded = () => setIsPlaying(false)
+    const handleError = (e: Event) => {
+      console.error('[v0] Audio error:', audio.error)
+      setError(`播放失败: ${audio.error?.message || '未知错误'}`)
+      setIsPlaying(false)
+    }
 
     audio.addEventListener('timeupdate', updateTime)
     audio.addEventListener('loadedmetadata', updateDuration)
     audio.addEventListener('ended', handleEnded)
+    audio.addEventListener('error', handleError)
 
     return () => {
       audio.removeEventListener('timeupdate', updateTime)
       audio.removeEventListener('loadedmetadata', updateDuration)
       audio.removeEventListener('ended', handleEnded)
+      audio.removeEventListener('error', handleError)
     }
   }, [])
 
@@ -84,7 +92,16 @@ export function AudioPlayer({ audioUrl, className }: AudioPlayerProps) {
 
   return (
     <div className={className}>
-      <audio ref={audioRef} src={audioUrl} />
+      {error && (
+        <div className="mb-2 text-sm text-red-500 bg-red-50 p-2 rounded">
+          {error}
+        </div>
+      )}
+      <audio 
+        ref={audioRef} 
+        src={audioUrl}
+        crossOrigin="anonymous"
+      />
       
       <div className="flex items-center gap-4">
         <Button

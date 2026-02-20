@@ -78,13 +78,19 @@ export function TTSPanel({ voices }: TTSPanelProps) {
       const data = await response.json()
       console.log('[v0] Response data:', data)
 
-      if (!data.data?.audio_url && !data.data?.audio_data) {
-        throw new Error('响应中缺少音频数据')
+      // 获取音频 URL（支持 audio_url 或 audio_data）
+      let audioSrc = ''
+      if (data.data?.audio_url) {
+        audioSrc = data.data.audio_url
+        console.log('[v0] Using audio_url:', audioSrc)
+      } else if (data.data?.audio_data) {
+        audioSrc = `data:audio/mpeg;base64,${data.data.audio_data}`
+        console.log('[v0] Using base64 audio_data')
+      } else {
+        throw new Error('响应中缺少音频数据（audio_url 或 audio_data）')
       }
 
-      // 使用 audio_url 或 audio_data（Base64）
-      const url = data.data.audio_url || `data:audio/mpeg;base64,${data.data.audio_data}`
-      setAudioUrl(url)
+      setAudioUrl(audioSrc)
       
       toast({
         title: '成功',

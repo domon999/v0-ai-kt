@@ -1,4 +1,4 @@
-import { type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { ApiResponseHelper } from '@/lib/utils/api-response'
 
@@ -129,21 +129,50 @@ export async function POST(request: NextRequest) {
 
       console.log('[v0] Uploaded to:', blob.url)
 
-      // 返回音频 URL 和元数据
-      return ApiResponseHelper.success({
-        audio_url: blob.url,
-        audio_time: data.data.audio_time || 0,
-        status: 'success',
-      }, '语音合成成功')
+      // 返回音频 URL 和元数据，确保正确的 Content-Type
+      return new NextResponse(
+        JSON.stringify({
+          success: true,
+          code: 0,
+          message: '语音合成成功',
+          data: {
+            audio_url: blob.url,
+            audio_time: data.data.audio_time || 0,
+            status: 'success',
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'public, max-age=3600',
+          },
+        }
+      )
     } catch (uploadError) {
       console.error('[v0] Upload error:', uploadError)
       
       // 如果上传失败，返回 base64
-      return ApiResponseHelper.success({
-        audio_data: audioBase64,
-        audio_time: data.data.audio_time || 0,
-        status: 'success',
-      }, '语音合成成功（Base64 格式）')
+      return new NextResponse(
+        JSON.stringify({
+          success: true,
+          code: 0,
+          message: '语音合成成功（Base64 格式）',
+          data: {
+            audio_data: audioBase64,
+            audio_time: data.data.audio_time || 0,
+            status: 'success',
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
+      )
     }
   } catch (error) {
     console.error('[v0] Sync TTS error:', error)

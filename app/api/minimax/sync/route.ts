@@ -1,4 +1,4 @@
-import { type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { ApiResponseHelper } from '@/lib/utils/api-response'
 
@@ -112,39 +112,24 @@ export async function POST(request: NextRequest) {
 
     // MiniMax 返回 base64 编码的音频
     const audioBase64 = data.data.audio
-    const audioBuffer = Buffer.from(audioBase64, 'base64')
+    if (!audioBase64 || audioBase64.length === 0) {
+      console.error('[v0] Empty audio data')
+      return ApiResponseHelper.serverError('MiniMax 返回空音频数据')
+    }
 
+    const audioBuffer = Buffer.from(audioBase64, 'base64')
     console.log('[v0] Audio buffer size:', audioBuffer.length, 'bytes')
 
-    // 上传到 Vercel Blob
-    try {
-      const { put } = await import('@vercel/blob')
-      const filename = `minimax-tts-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.mp3`
-      
-      console.log('[v0] Uploading to Vercel Blob...')
-      const blob = await put(filename, audioBuffer, {
-        access: 'public',
-        contentType: 'audio/mpeg',
-      })
-
-      console.log('[v0] Uploaded to:', blob.url)
-
-      // 返回音频 URL 和元数据
-      return ApiResponseHelper.success({
-        audio_url: blob.url,
-        audio_time: data.data.audio_time || 0,
-        status: 'success',
-      }, '语音合成成功')
-    } catch (uploadError) {
-      console.error('[v0] Upload error:', uploadError)
-      
-      // 如果上传失败，返回 base64
-      return ApiResponseHelper.success({
-        audio_data: audioBase64,
-        audio_time: data.data.audio_time || 0,
-        status: 'success',
-      }, '语音合成成功（Base64 格式）')
-    }
+    // 直接返回音频流，让浏览器可以直接播放
+    return new NextResponse(audioBuffer, {
+      status: 200,
+      headers: {
+        'Content-Type': 'audio/mpeg',
+        'Content-Length': audioBuffer.length.toString(),
+        'Content-Disposition': 'inline',
+        'Cache-Control': 'public, max-age=3600',
+      },
+    })
   } catch (error) {
     console.error('[v0] Sync TTS error:', error)
     return ApiResponseHelper.serverError(

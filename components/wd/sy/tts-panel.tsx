@@ -52,8 +52,13 @@ export function TTSPanel({ voices }: TTSPanelProps) {
     }
 
     setIsGenerating(true)
+    // 释放之前的音频 URL
+    if (audioUrl && audioUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(audioUrl)
+      setAudioUrl('')
+    }
+
     try {
-      console.log('[v0] Calling /api/minimax/sync with voice_id:', selectedVoiceId)
       const response = await fetch('/api/minimax/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -67,23 +72,25 @@ export function TTSPanel({ voices }: TTSPanelProps) {
         }),
       })
 
-      console.log('[v0] Response status:', response.status)
-
       if (!response.ok) {
-        const error = await response.json()
-        console.error('[v0] API error:', error)
-        throw new Error(error.message || '生成失败')
+        // 如果返回的是 JSON 错误信息
+        const contentType = response.headers.get('content-type') || ''
+        if (contentType.includes('application/json')) {
+          const error = await response.json()
+          throw new Error(error.message || '生成失败')
+        }
+        throw new Error(`生成失败 (HTTP ${response.status})`)
       }
 
-      const data = await response.json()
-      console.log('[v0] Response data:', data)
-
-      if (!data.data?.audio_url && !data.data?.audio_data) {
-        throw new Error('响应中缺少音频数据')
+      // API 直接返回音频流（audio/mpeg）
+      const audioBlob = await response.blob()
+      
+      if (audioBlob.size === 0) {
+        throw new Error('返回的音频数据为空')
       }
 
-      // 使用 audio_url 或 audio_data（Base64）
-      const url = data.data.audio_url || `data:audio/mpeg;base64,${data.data.audio_data}`
+      // 创建可播放的 Object URL
+      const url = URL.createObjectURL(audioBlob)
       setAudioUrl(url)
       
       toast({
@@ -91,7 +98,6 @@ export function TTSPanel({ voices }: TTSPanelProps) {
         description: '语音生成成功！',
       })
     } catch (error) {
-      console.error('[v0] Generate error:', error)
       toast({
         title: '生成失败',
         description: error instanceof Error ? error.message : '未知错误',

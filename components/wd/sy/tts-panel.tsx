@@ -53,27 +53,45 @@ export function TTSPanel({ voices }: TTSPanelProps) {
 
     setIsGenerating(true)
     try {
-      const response = await fetch('/api/minimax/tts', {
+      console.log('[v0] Calling /api/minimax/sync with voice_id:', selectedVoiceId)
+      const response = await fetch('/api/minimax/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text,
-          voiceId: selectedVoiceId,
+          text: text.trim(),
+          voice_id: selectedVoiceId,
+          model: 'speech-2.8-hd',
+          speed: 1.0,
+          vol: 10,
+          pitch: 1,
         }),
       })
 
+      console.log('[v0] Response status:', response.status)
+
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || '生成失败')
+        console.error('[v0] API error:', error)
+        throw new Error(error.message || '生成失败')
       }
 
       const data = await response.json()
-      setAudioUrl(data.audioUrl)
+      console.log('[v0] Response data:', data)
+
+      if (!data.data?.audio_url && !data.data?.audio_data) {
+        throw new Error('响应中缺少音频数据')
+      }
+
+      // 使用 audio_url 或 audio_data（Base64）
+      const url = data.data.audio_url || `data:audio/mpeg;base64,${data.data.audio_data}`
+      setAudioUrl(url)
+      
       toast({
         title: '成功',
-        description: `语音生成成功！已消耗 ${data.creditsUsed} 积分`,
+        description: '语音生成成功！',
       })
     } catch (error) {
+      console.error('[v0] Generate error:', error)
       toast({
         title: '生成失败',
         description: error instanceof Error ? error.message : '未知错误',

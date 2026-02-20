@@ -87,13 +87,19 @@ export function MinimaxConfig({ configs }: { configs: any[] }) {
     setLoading(true)
     try {
       const isEditing = !!editingConfig
+      const submitData = isEditing ? { id: editingConfig.id, ...formData } : formData
+      
+      console.log('[v0] Submitting MiniMax config:', submitData)
+      
       const response = await fetch('/api/admin/minimax-config', {
         method: isEditing ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          isEditing ? { id: editingConfig.id, ...formData } : formData
-        ),
+        body: JSON.stringify(submitData),
       })
+
+      console.log('[v0] Response status:', response.status)
+      const responseData = await response.json()
+      console.log('[v0] Response data:', responseData)
 
       if (response.ok) {
         toast({
@@ -109,12 +115,14 @@ export function MinimaxConfig({ configs }: { configs: any[] }) {
         })
         router.refresh()
       } else {
+        console.error('[v0] Request failed:', responseData)
         toast({
           description: isEditing ? '更新失败' : '添加失败',
           variant: 'destructive',
         })
       }
     } catch (error) {
+      console.error('[v0] Submit error:', error)
       toast({
         description: editingConfig ? '更新失败' : '添加失败',
         variant: 'destructive',

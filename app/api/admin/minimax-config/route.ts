@@ -44,12 +44,17 @@ export async function GET() {
 // 添加新配置
 export async function POST(request: NextRequest) {
   try {
+    console.log('[v0] POST /api/admin/minimax-config - Start')
+    
     const supabase = await createClient()
 
     // 验证管理员权限
     const {
       data: { user },
     } = await supabase.auth.getUser()
+    
+    console.log('[v0] User auth check:', { hasUser: !!user })
+    
     if (!user) {
       return ApiResponseHelper.unauthorized('请先登录')
     }
@@ -60,6 +65,8 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
+    console.log('[v0] Admin check:', { isAdmin: profile?.is_admin })
+
     if (!profile?.is_admin) {
       return ApiResponseHelper.forbidden('需要管理员权限')
     }
@@ -67,9 +74,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { config_name, group_id, api_key, priority } = body
 
+    console.log('[v0] Request body:', { 
+      config_name, 
+      group_id, 
+      hasApiKey: !!api_key,
+      priority 
+    })
+
     if (!config_name || !api_key) {
+      console.log('[v0] Validation failed - missing required fields')
       return ApiResponseHelper.validationError('缺少必填字段')
     }
+
+    console.log('[v0] Attempting to insert config...')
 
     const { data, error } = await supabase
       .from('minimax_voice_configs')
@@ -83,10 +100,18 @@ export async function POST(request: NextRequest) {
       .select()
       .single()
 
+    console.log('[v0] Insert result:', { 
+      success: !error, 
+      hasData: !!data,
+      error: error ? { message: error.message, code: error.code } : null
+    })
+
     if (error) {
+      console.error('[v0] Database error:', error)
       return ApiResponseHelper.serverError('添加配置失败: ' + error.message)
     }
 
+    console.log('[v0] Config saved successfully:', { id: data.id })
     return ApiResponseHelper.success(data, '配置添加成功')
   } catch (error) {
     console.error('[v0] Add MiniMax config error:', error)

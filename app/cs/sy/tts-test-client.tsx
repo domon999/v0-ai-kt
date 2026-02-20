@@ -122,6 +122,8 @@ export function TTSTestClient() {
   const [speed, setSpeed] = useState(1)
   const [vol, setVol] = useState(10)
   const [pitch, setPitch] = useState(1)
+  const [customApiKey, setCustomApiKey] = useState('')
+  const [customGroupId, setCustomGroupId] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
@@ -147,20 +149,33 @@ export function TTSTestClient() {
     setLoading(true)
     setError('')
     setAudioUrl(null)
-    addLog(`开始同步合成: model=${model}, voice=${voiceId}, text=${text.length}字`)
+    const usingCustomKey = !!customApiKey
+    addLog(`开始同步合成: model=${model}, voice=${voiceId}, text=${text.length}字, 使用${usingCustomKey ? '自定义' : '配置的'} API Key`)
 
     try {
+      const requestBody: any = {
+        model,
+        text: text.trim(),
+        voice_id: voiceId,
+        speed,
+        vol,
+        pitch,
+      }
+
+      // 如果提供了自定义 API Key，添加到请求中
+      if (customApiKey) {
+        requestBody.api_key = customApiKey
+        addLog('使用自定义 API Key')
+      }
+      if (customGroupId) {
+        requestBody.group_id = customGroupId
+        addLog(`使用自定义 Group ID: ${customGroupId}`)
+      }
+
       const res = await fetch('/api/minimax/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model,
-          text: text.trim(),
-          voice_id: voiceId,
-          speed,
-          vol,
-          pitch,
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       addLog(`响应状态: ${res.status} ${res.statusText}`)
@@ -221,20 +236,31 @@ export function TTSTestClient() {
     setAsyncTaskId('')
     setAsyncStatus('')
     setAsyncFileId('')
-    addLog(`开始异步合成: model=${model}, voice=${voiceId}, text=${text.length}字`)
+    const usingCustomKey = !!customApiKey
+    addLog(`开始异步合成: model=${model}, voice=${voiceId}, text=${text.length}字, 使用${usingCustomKey ? '自定义' : '配置的'} API Key`)
 
     try {
+      const requestBody: any = {
+        model,
+        text: text.trim(),
+        voice_id: voiceId,
+        speed,
+        vol,
+        pitch,
+      }
+
+      // 如果提供了自定义 API Key，添加到请求中
+      if (customApiKey) {
+        requestBody.api_key = customApiKey
+      }
+      if (customGroupId) {
+        requestBody.group_id = customGroupId
+      }
+
       const res = await fetch('/api/minimax/async', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model,
-          text: text.trim(),
-          voice_id: voiceId,
-          speed,
-          vol,
-          pitch,
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       const data = await res.json()
@@ -325,9 +351,55 @@ export function TTSTestClient() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">MiniMax TTS 测试</h1>
           <p className="mt-1 text-muted-foreground">
-            测试 MiniMax 语音合成 API，使用 /glht/api 中配置的 API Key
+            测试 MiniMax 语音合成 API，可自定义 API Key 或使用 /glht/api 中的配置
           </p>
         </div>
+
+        {/* API 配置（可选） */}
+        <Card>
+          <CardHeader>
+            <CardTitle>API 配置（可选）</CardTitle>
+            <CardDescription>
+              留空则使用 /glht/api 中配置的 MiniMax API Key；填写则使用此处的配置
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="api-key">API Key</Label>
+              <Input
+                id="api-key"
+                type="password"
+                placeholder="留空使用配置的 API Key"
+                value={customApiKey}
+                onChange={(e) => setCustomApiKey(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="group-id">Group ID（可选）</Label>
+              <Input
+                id="group-id"
+                placeholder="留空使用配置的 Group ID"
+                value={customGroupId}
+                onChange={(e) => setCustomGroupId(e.target.value)}
+              />
+            </div>
+            {(customApiKey || customGroupId) && (
+              <div className="flex items-center gap-2 rounded-lg bg-muted p-3 text-sm">
+                <Badge variant="secondary">使用自定义配置</Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setCustomApiKey('')
+                    setCustomGroupId('')
+                  }}
+                >
+                  清除
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* 文本输入 */}
         <Card>

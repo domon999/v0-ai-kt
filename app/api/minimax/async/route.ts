@@ -22,6 +22,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+    let apiKey = body.api_key
+    let groupId = body.group_id
     const { model, text, voice_id, speed, vol, pitch } = body
 
     if (!text || !voice_id) {
@@ -32,17 +34,22 @@ export async function POST(request: NextRequest) {
       return ApiResponseHelper.validationError('异步模式文本长度不能超过 100,000 字符')
     }
 
-    // 从数据库获取 API Key
-    const { data: config } = await supabase
-      .from('minimax_voice_configs')
-      .select('api_key, group_id')
-      .eq('enabled', true)
-      .order('priority', { ascending: true })
-      .limit(1)
-      .single()
+    // 如果未提供 API Key，从数据库获取
+    if (!apiKey) {
+      const { data: config } = await supabase
+        .from('minimax_voice_configs')
+        .select('api_key, group_id')
+        .eq('enabled', true)
+        .order('priority', { ascending: true })
+        .limit(1)
+        .single()
 
-    if (!config?.api_key) {
-      return ApiResponseHelper.serverError('未配置 MiniMax API Key，请先在管理后台 /glht/api 中配置')
+      if (!config?.api_key) {
+        return ApiResponseHelper.serverError('未配置 MiniMax API Key，请先在管理后台 /glht/api 中配置')
+      }
+
+      apiKey = config.api_key
+      groupId = groupId || config.group_id
     }
 
     // 构建请求体（严格按照官方文档格式）
@@ -63,8 +70,8 @@ export async function POST(request: NextRequest) {
       },
     }
 
-    if (config.group_id) {
-      requestBody.GroupID = config.group_id
+    if (groupId) {
+      requestBody.GroupID = groupId
     }
 
     console.log('[v0] Async TTS create request:', JSON.stringify(requestBody, null, 2))
@@ -72,7 +79,7 @@ export async function POST(request: NextRequest) {
     const response = await fetch('https://api.minimaxi.com/v1/t2a_async_v2', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${config.api_key}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestBody),

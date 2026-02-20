@@ -3,8 +3,11 @@
 import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
 import { AudioPlayer } from './audio-player'
 import { Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
@@ -34,6 +37,8 @@ const OFFICIAL_VOICES = [
 export function TTSPanel({ voices }: TTSPanelProps) {
   const [text, setText] = useState('')
   const [selectedVoiceId, setSelectedVoiceId] = useState('')
+  const [customApiKey, setCustomApiKey] = useState('')
+  const [customGroupId, setCustomGroupId] = useState('')
   const [audioUrl, setAudioUrl] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const { toast } = useToast()
@@ -59,22 +64,34 @@ export function TTSPanel({ voices }: TTSPanelProps) {
     }
 
     try {
+      const usingCustomKey = !!customApiKey
       console.log('[v0] Starting TTS generation:', {
         textLength: text.length,
         voiceId: selectedVoiceId,
+        usingCustomKey,
       })
+
+      const requestBody: any = {
+        text: text.trim(),
+        voice_id: selectedVoiceId,
+        model: 'speech-2.8-hd',
+        speed: 1,
+        vol: 10,
+        pitch: 1,
+      }
+
+      // 如果提供了自定义 API Key，添加到请求中
+      if (customApiKey) {
+        requestBody.api_key = customApiKey
+      }
+      if (customGroupId) {
+        requestBody.group_id = customGroupId
+      }
 
       const response = await fetch('/api/minimax/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: text.trim(),
-          voice_id: selectedVoiceId,
-          model: 'speech-2.8-hd',
-          speed: 1,
-          vol: 10,
-          pitch: 1,
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       console.log('[v0] Response status:', response.status)
@@ -133,6 +150,55 @@ export function TTSPanel({ voices }: TTSPanelProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* API 配置区域 */}
+        <div className="space-y-3 p-4 rounded-lg bg-muted/50">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-semibold">API 配置（可选）</Label>
+            {(customApiKey || customGroupId) && (
+              <Badge variant="secondary" className="text-xs">使用自定义配置</Badge>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            留空则使用 /glht/api 中配置的 MiniMax API Key
+          </p>
+          <div className="grid gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="api-key" className="text-xs">API Key</Label>
+              <Input
+                id="api-key"
+                type="password"
+                placeholder="留空使用配置的 API Key"
+                value={customApiKey}
+                onChange={(e) => setCustomApiKey(e.target.value)}
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="group-id" className="text-xs">Group ID（可选）</Label>
+              <Input
+                id="group-id"
+                placeholder="留空使用配置的 Group ID"
+                value={customGroupId}
+                onChange={(e) => setCustomGroupId(e.target.value)}
+                className="h-9 text-sm"
+              />
+            </div>
+          </div>
+          {(customApiKey || customGroupId) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setCustomApiKey('')
+                setCustomGroupId('')
+              }}
+              className="w-full h-8 text-xs"
+            >
+              清除自定义配置
+            </Button>
+          )}
+        </div>
+
         <div>
           <Select value={selectedVoiceId} onValueChange={setSelectedVoiceId}>
             <SelectTrigger>

@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { Plus, Edit, Trash2, Power } from 'lucide-react'
+import { Plus, Edit, Trash2, Power, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useRouter } from 'next/navigation'
 
@@ -151,6 +151,8 @@ export function MinimaxConfig({ configs: initialConfigs }: { configs: any[] }) {
     }
   }
 
+  const hasInvalidConfigs = configs.some(c => !c.api_key)
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -160,6 +162,21 @@ export function MinimaxConfig({ configs: initialConfigs }: { configs: any[] }) {
           添加配置
         </Button>
       </div>
+
+      {/* 管理员提示 */}
+      {hasInvalidConfigs && (
+        <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-orange-900">配置提醒</h3>
+              <p className="text-sm text-orange-800 mt-1">
+                有配置项缺少 API Key，请检查并补全。API Key 未正确保存可能导致语音合成功能无法使用。
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-4">
         {configs.map((config) => (
@@ -200,10 +217,33 @@ export function MinimaxConfig({ configs: initialConfigs }: { configs: any[] }) {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
+              <div className="space-y-3">
+                {/* API Key 状态 */}
+                <div className="flex items-center gap-2">
+                  {config.api_key ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <span className="text-sm text-green-600 font-medium">
+                        API Key 已保存
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        ({config.api_key.slice(0, 8)}...{config.api_key.slice(-4)})
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="h-4 w-4 text-orange-600" />
+                      <span className="text-sm text-orange-600 font-medium">
+                        未配置 API Key
+                      </span>
+                    </>
+                  )}
+                </div>
+
                 <p className="text-sm text-muted-foreground">
                   Group ID: {config.group_id || '未配置'}
                 </p>
+                
                 <div className="flex items-center gap-4 text-sm">
                   <span className="text-green-600">
                     成功: {config.success_requests || 0}

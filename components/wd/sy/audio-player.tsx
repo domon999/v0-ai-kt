@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
-import { Play, Pause, Volume2, VolumeX } from 'lucide-react'
+import { Play, Pause, Volume2, VolumeX, Download } from 'lucide-react'
 
 interface AudioPlayerProps {
   audioUrl: string
@@ -82,6 +82,15 @@ export function AudioPlayer({ audioUrl, className }: AudioPlayerProps) {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
   }
 
+  const handleDownload = () => {
+    const link = document.createElement('a')
+    link.href = audioUrl
+    link.download = `voice-${Date.now()}.mp3`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
     <div className={className}>
       <audio ref={audioRef} src={audioUrl} />
@@ -125,6 +134,15 @@ export function AudioPlayer({ audioUrl, className }: AudioPlayerProps) {
             className="cursor-pointer"
           />
         </div>
+
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={handleDownload}
+          title="下载音频"
+        >
+          <Download className="h-5 w-5" />
+        </Button>
       </div>
     </div>
   )

@@ -59,6 +59,11 @@ export function TTSPanel({ voices }: TTSPanelProps) {
     }
 
     try {
+      console.log('[v0] Starting TTS generation:', {
+        textLength: text.length,
+        voiceId: selectedVoiceId,
+      })
+
       const response = await fetch('/api/minimax/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -66,38 +71,49 @@ export function TTSPanel({ voices }: TTSPanelProps) {
           text: text.trim(),
           voice_id: selectedVoiceId,
           model: 'speech-2.8-hd',
-          speed: 1.0,
+          speed: 1,
           vol: 10,
           pitch: 1,
         }),
       })
 
+      console.log('[v0] Response status:', response.status)
+
       if (!response.ok) {
-        // 如果返回的是 JSON 错误信息
+        // 尝试解析 JSON 错误信息
         const contentType = response.headers.get('content-type') || ''
         if (contentType.includes('application/json')) {
-          const error = await response.json()
-          throw new Error(error.message || '生成失败')
+          const errorData = await response.json()
+          console.error('[v0] API error:', errorData)
+          throw new Error(errorData.error || errorData.message || '生成失败')
         }
         throw new Error(`生成失败 (HTTP ${response.status})`)
       }
 
       // API 直接返回音频流（audio/mpeg）
       const audioBlob = await response.blob()
+      console.log('[v0] Audio blob size:', audioBlob.size, 'bytes')
       
       if (audioBlob.size === 0) {
         throw new Error('返回的音频数据为空')
       }
 
+      // 验证音频格式
+      if (!audioBlob.type.includes('audio')) {
+        console.warn('[v0] Unexpected blob type:', audioBlob.type)
+      }
+
       // 创建可播放的 Object URL
       const url = URL.createObjectURL(audioBlob)
       setAudioUrl(url)
+      console.log('[v0] Audio URL created successfully')
       
       toast({
         title: '成功',
-        description: '语音生成成功！',
+        description: `语音生成成功！(${Math.round(audioBlob.size / 1024)} KB)`,
       })
     } catch (error) {
+      console.error('[v0] TTS generation error:', error)
       toast({
         title: '生成失败',
         description: error instanceof Error ? error.message : '未知错误',

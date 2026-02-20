@@ -1,25 +1,10 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import { VoicePageClient } from './voice-page-client'
 
-export default async function VoiceManagementPage() {
-  const supabase = await createClient()
+export const metadata = {
+  title: 'MiniMax 语音合成',
+  description: 'MiniMax 语音合成测试页面',
+}
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect('/auth/login?redirect=/wd/sy')
-  }
-
-  // 获取用户的声音列表
-  const { data: voices } = await supabase
-    .from('voices')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('status', 'active')
-    .order('created_at', { ascending: false })
-
-  return <VoicePageClient initialVoices={voices || []} />
+export default function VoiceSynthesisPage() {
+  return <VoicePageClient />
 }

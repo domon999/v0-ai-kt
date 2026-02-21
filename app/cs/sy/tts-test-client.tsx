@@ -361,8 +361,17 @@ export function TTSTestClient() {
       setError('请选择待克隆音频')
       return
     }
+    
+    // 验证文件大小
+    const fileSizeMB = cloneFile.size / 1024 / 1024
+    if (fileSizeMB > 20) {
+      setError(`文件过大 (${fileSizeMB.toFixed(1)}MB)，最大支持 20MB`)
+      return
+    }
+    
     setCloneLoading(true)
-    addLog(`上传克隆音频: ${cloneFile.name}`)
+    setError('')
+    addLog(`开始上传克隆音频: ${cloneFile.name} (${fileSizeMB.toFixed(1)}MB)`)
 
     try {
       const formData = new FormData()
@@ -371,22 +380,25 @@ export function TTSTestClient() {
       if (customApiKey) formData.append('api_key', customApiKey)
       if (customGroupId) formData.append('group_id', customGroupId)
 
+      addLog('正在上传到服务器...')
       const res = await fetch('/api/minimax/voice-clone/upload', {
         method: 'POST',
         body: formData,
       })
 
+      addLog(`服务器响应: ${res.status}`)
       const data = await res.json()
+      
       if (data.success && data.data?.file_id) {
         setCloneFileId(data.data.file_id)
-        addLog(`克隆音频上传成功: file_id=${data.data.file_id}`)
+        addLog(`✓ 克隆音频上传成功: file_id=${data.data.file_id}`)
       } else {
         setError(data.error || '上传失败')
-        addLog(`错误: ${data.error}`)
+        addLog(`✗ 错误: ${data.error}`)
       }
     } catch (e: any) {
       setError(e.message || '上传失败')
-      addLog(`异常: ${e.message}`)
+      addLog(`✗ 异常: ${e.message}`)
     } finally {
       setCloneLoading(false)
     }
@@ -397,8 +409,17 @@ export function TTSTestClient() {
       setError('请选择示例音频')
       return
     }
+    
+    // 验证文件大小
+    const fileSizeMB = promptFile.size / 1024 / 1024
+    if (fileSizeMB > 20) {
+      setError(`文件过大 (${fileSizeMB.toFixed(1)}MB)，最大支持 20MB`)
+      return
+    }
+    
     setCloneLoading(true)
-    addLog(`上传示例音频: ${promptFile.name}`)
+    setError('')
+    addLog(`开始上传示例音频: ${promptFile.name} (${fileSizeMB.toFixed(1)}MB)`)
 
     try {
       const formData = new FormData()
@@ -407,22 +428,25 @@ export function TTSTestClient() {
       if (customApiKey) formData.append('api_key', customApiKey)
       if (customGroupId) formData.append('group_id', customGroupId)
 
+      addLog('正在上传到服务器...')
       const res = await fetch('/api/minimax/voice-clone/upload', {
         method: 'POST',
         body: formData,
       })
 
+      addLog(`服务器响应: ${res.status}`)
       const data = await res.json()
+      
       if (data.success && data.data?.file_id) {
         setPromptFileId(data.data.file_id)
-        addLog(`示例音频上传成功: file_id=${data.data.file_id}`)
+        addLog(`✓ 示例音频上传成功: file_id=${data.data.file_id}`)
       } else {
         setError(data.error || '上传失败')
-        addLog(`错误: ${data.error}`)
+        addLog(`✗ 错误: ${data.error}`)
       }
     } catch (e: any) {
       setError(e.message || '上传失败')
-      addLog(`异常: ${e.message}`)
+      addLog(`✗ 异常: ${e.message}`)
     } finally {
       setCloneLoading(false)
     }
@@ -443,7 +467,7 @@ export function TTSTestClient() {
     }
 
     setCloneLoading(true)
-    addLog(`开始声音克隆: voice_id=${cloneVoiceId}`)
+    addLog(`开始声音���隆: voice_id=${cloneVoiceId}`)
 
     try {
       const requestBody: any = {
@@ -827,15 +851,21 @@ export function TTSTestClient() {
                   accept=".mp3,.m4a,.wav"
                   onChange={(e) => setCloneFile(e.target.files?.[0] || null)}
                   className="flex-1"
+                  disabled={cloneLoading}
                 />
                 <Button
                   onClick={handleUploadCloneFile}
                   disabled={cloneLoading || !cloneFile}
                   variant="outline"
                 >
-                  上传
+                  {cloneLoading ? '上传中...' : '上传'}
                 </Button>
               </div>
+              {cloneFile && !cloneFileId && (
+                <p className="text-xs text-muted-foreground">
+                  已选择: {cloneFile.name} ({(cloneFile.size / 1024 / 1024).toFixed(2)} MB)
+                </p>
+              )}
               {cloneFileId && (
                 <p className="text-xs text-muted-foreground">
                   file_id: <code className="rounded bg-muted px-1">{cloneFileId}</code>
@@ -858,15 +888,21 @@ export function TTSTestClient() {
                   accept=".mp3,.m4a,.wav"
                   onChange={(e) => setPromptFile(e.target.files?.[0] || null)}
                   className="flex-1"
+                  disabled={cloneLoading}
                 />
                 <Button
                   onClick={handleUploadPromptFile}
                   disabled={cloneLoading || !promptFile}
                   variant="outline"
                 >
-                  上传
+                  {cloneLoading ? '上传中...' : '上传'}
                 </Button>
               </div>
+              {promptFile && !promptFileId && (
+                <p className="text-xs text-muted-foreground">
+                  已选择: {promptFile.name} ({(promptFile.size / 1024 / 1024).toFixed(2)} MB)
+                </p>
+              )}
               {promptFileId && (
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground">

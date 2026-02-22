@@ -56,7 +56,8 @@ export function VoiceCloneUpload({
     }, 0)
   }
 
-  const handleUploadCloneFile = async () => {
+  // 上传克隆音频 - 使用 setTimeout 解耦主线程，防止浏览器卡死
+  const handleUploadCloneFile = () => {
     if (!cloneFile) {
       onError('请选择待克隆音频')
       return
@@ -72,38 +73,42 @@ export function VoiceCloneUpload({
     onError('')
     onLog(`开始上传克隆音频: ${cloneFile.name} (${fileSizeMB.toFixed(1)}MB)`)
 
-    try {
-      const formData = new FormData()
-      formData.append('file', cloneFile)
-      formData.append('purpose', 'voice_clone')
-      if (customApiKey) formData.append('api_key', customApiKey)
-      if (customGroupId) formData.append('group_id', customGroupId)
+    // 退出当前渲染循环，给浏览器喘息机会
+    setTimeout(async () => {
+      try {
+        const formData = new FormData()
+        formData.append('file', cloneFile)
+        formData.append('purpose', 'voice_clone')
+        if (customApiKey) formData.append('api_key', customApiKey)
+        if (customGroupId) formData.append('group_id', customGroupId)
 
-      onLog('正在上传到服务器...')
-      const res = await fetch('/api/minimax/voice-clone/upload', {
-        method: 'POST',
-        body: formData,
-      })
+        onLog('正在上传到服务器...')
+        const res = await fetch('/api/minimax/voice-clone/upload', {
+          method: 'POST',
+          body: formData,
+        })
 
-      onLog(`服务器响应: ${res.status}`)
-      const data = await res.json()
+        onLog(`服务器响应: ${res.status}`)
+        const data = await res.json()
 
-      if (data.success && data.data?.file_id) {
-        setCloneFileId(data.data.file_id)
-        onLog(`✓ 克隆音频上传成功: file_id=${data.data.file_id}`)
-      } else {
-        onError(data.error || '上传失败')
-        onLog(`✗ 错误: ${data.error}`)
+        if (data.success && data.data?.file_id) {
+          setCloneFileId(data.data.file_id)
+          onLog(`克隆音频上传成功: file_id=${data.data.file_id}`)
+        } else {
+          onError(data.error || '上传失败')
+          onLog(`错误: ${data.error}`)
+        }
+      } catch (e: any) {
+        onError(e.message || '上传失败')
+        onLog(`异常: ${e.message}`)
+      } finally {
+        setCloneLoading(false)
       }
-    } catch (e: any) {
-      onError(e.message || '上传失败')
-      onLog(`✗ 异常: ${e.message}`)
-    } finally {
-      setCloneLoading(false)
-    }
+    }, 0)
   }
 
-  const handleUploadPromptFile = async () => {
+  // 上传示例音频 - 使用 setTimeout 解耦主线程
+  const handleUploadPromptFile = () => {
     if (!promptFile) {
       onError('请选择示例音频')
       return
@@ -119,35 +124,37 @@ export function VoiceCloneUpload({
     onError('')
     onLog(`开始上传示例音频: ${promptFile.name} (${fileSizeMB.toFixed(1)}MB)`)
 
-    try {
-      const formData = new FormData()
-      formData.append('file', promptFile)
-      formData.append('purpose', 'prompt_audio')
-      if (customApiKey) formData.append('api_key', customApiKey)
-      if (customGroupId) formData.append('group_id', customGroupId)
+    setTimeout(async () => {
+      try {
+        const formData = new FormData()
+        formData.append('file', promptFile)
+        formData.append('purpose', 'prompt_audio')
+        if (customApiKey) formData.append('api_key', customApiKey)
+        if (customGroupId) formData.append('group_id', customGroupId)
 
-      onLog('正在上传到服务器...')
-      const res = await fetch('/api/minimax/voice-clone/upload', {
-        method: 'POST',
-        body: formData,
-      })
+        onLog('正在上传到服务器...')
+        const res = await fetch('/api/minimax/voice-clone/upload', {
+          method: 'POST',
+          body: formData,
+        })
 
-      onLog(`服务器响应: ${res.status}`)
-      const data = await res.json()
+        onLog(`服务器响应: ${res.status}`)
+        const data = await res.json()
 
-      if (data.success && data.data?.file_id) {
-        setPromptFileId(data.data.file_id)
-        onLog(`✓ 示例音频上传成功: file_id=${data.data.file_id}`)
-      } else {
-        onError(data.error || '上传失败')
-        onLog(`✗ 错误: ${data.error}`)
+        if (data.success && data.data?.file_id) {
+          setPromptFileId(data.data.file_id)
+          onLog(`示例音频上传成功: file_id=${data.data.file_id}`)
+        } else {
+          onError(data.error || '上传失败')
+          onLog(`错误: ${data.error}`)
+        }
+      } catch (e: any) {
+        onError(e.message || '上传失败')
+        onLog(`异常: ${e.message}`)
+      } finally {
+        setCloneLoading(false)
       }
-    } catch (e: any) {
-      onError(e.message || '上传失败')
-      onLog(`✗ 异常: ${e.message}`)
-    } finally {
-      setCloneLoading(false)
-    }
+    }, 0)
   }
 
   const handleVoiceClone = async () => {

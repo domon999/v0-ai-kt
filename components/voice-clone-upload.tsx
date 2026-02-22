@@ -39,21 +39,38 @@ export function VoiceCloneUpload({
     const file = e.target.files?.[0]
     if (!file) return
 
-    // 使用 setTimeout 将文件处理移到下一个事件循环
-    setTimeout(() => {
-      setCloneFile(file)
-      onLog(`已选择克隆音频: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`)
-    }, 0)
+    // 立即保存文件引用，不做任何其他操作
+    setCloneFile(file)
+    
+    // 使用 requestIdleCallback 在浏览器空闲时记录日志
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => {
+        onLog(`已选择克隆音频: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`)
+      })
+    } else {
+      setTimeout(() => {
+        onLog(`已选择克隆音频: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`)
+      }, 100)
+    }
   }
 
   const handlePromptFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    setTimeout(() => {
-      setPromptFile(file)
-      onLog(`已选择示例音频: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`)
-    }, 0)
+    // 立即保存文件引用，不做任何其他操作
+    setPromptFile(file)
+    
+    // 使用 requestIdleCallback 在浏览器空闲时记录日志
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => {
+        onLog(`已选择示例音频: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`)
+      })
+    } else {
+      setTimeout(() => {
+        onLog(`已选择示例音频: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`)
+      }, 100)
+    }
   }
 
   // 上传克隆音频 - 使用 setTimeout 解耦主线程，防止浏览器卡死
@@ -69,12 +86,16 @@ export function VoiceCloneUpload({
       return
     }
 
+    // 立即设置加载状态，防止重复点击
     setCloneLoading(true)
     onError('')
-    onLog(`开始上传克隆音频: ${cloneFile.name} (${fileSizeMB.toFixed(1)}MB)`)
-
-    // 退出当前渲染循环，给浏览器喘息机会
-    setTimeout(async () => {
+    
+    // 使用 requestAnimationFrame 确保 UI 更新后再开始上传
+    requestAnimationFrame(() => {
+      onLog(`开始上传克隆音频: ${cloneFile.name} (${fileSizeMB.toFixed(1)}MB)`)
+      
+      // 退出当前渲染循环，给浏览器喘息机会
+      setTimeout(async () => {
       try {
         const formData = new FormData()
         formData.append('file', cloneFile)
@@ -120,11 +141,15 @@ export function VoiceCloneUpload({
       return
     }
 
+    // 立即设置加载状态，防止重复点击
     setCloneLoading(true)
     onError('')
-    onLog(`开始上传示例音频: ${promptFile.name} (${fileSizeMB.toFixed(1)}MB)`)
-
-    setTimeout(async () => {
+    
+    // 使用 requestAnimationFrame 确保 UI 更新后再开始上传
+    requestAnimationFrame(() => {
+      onLog(`开始上传示例音频: ${promptFile.name} (${fileSizeMB.toFixed(1)}MB)`)
+      
+      setTimeout(async () => {
       try {
         const formData = new FormData()
         formData.append('file', promptFile)
@@ -145,16 +170,17 @@ export function VoiceCloneUpload({
           setPromptFileId(data.data.file_id)
           onLog(`示例音频上传成功: file_id=${data.data.file_id}`)
         } else {
-          onError(data.error || '上传失败')
-          onLog(`错误: ${data.error}`)
-        }
-      } catch (e: any) {
-        onError(e.message || '上传失败')
-        onLog(`异常: ${e.message}`)
-      } finally {
-        setCloneLoading(false)
+        onError(data.error || '上传失败')
+        onLog(`错误: ${data.error}`)
       }
-    }, 0)
+    } catch (e: any) {
+      onError(e.message || '上传失败')
+      onLog(`异常: ${e.message}`)
+    } finally {
+      setCloneLoading(false)
+    }
+      }, 0)
+    })
   }
 
   const handleVoiceClone = async () => {

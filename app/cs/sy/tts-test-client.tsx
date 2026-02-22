@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { PerformanceMonitor } from '@/lib/performance-monitor'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -157,6 +158,14 @@ export function TTSTestClient() {
   const [cloneClipboard, setCloneClipboard] = useState(false)
   const cloneFileInputRef = useRef<HTMLInputElement>(null)
   const promptFileInputRef = useRef<HTMLInputElement>(null)
+
+  // 性能监控：追踪组件生命周期
+  useEffect(() => {
+    PerformanceMonitor.log('🚀 TTSTestClient 组件已挂载')
+    return () => {
+      PerformanceMonitor.log('💀 TTSTestClient 组件已卸载')
+    }
+  }, [])
 
   const addLog = (msg: string) => {
     const time = new Date().toLocaleTimeString('zh-CN', { hour12: false })
@@ -437,7 +446,8 @@ export function TTSTestClient() {
   }
 
   const handleCloneReset = () => {
-    console.log('[v0] Resetting clone dialog')
+    PerformanceMonitor.start('clone-dialog-reset')
+    PerformanceMonitor.log('🔄 重置克隆对话框')
     setShowCloneDialog(false)
     setCloneStep(1)
     setCloneFile(null)
@@ -448,10 +458,13 @@ export function TTSTestClient() {
     // 清理文件输入，防止内存泄漏
     if (cloneFileInputRef.current) {
       cloneFileInputRef.current.value = ''
+      PerformanceMonitor.log('🧹 已清空克隆文件输入')
     }
     if (promptFileInputRef.current) {
       promptFileInputRef.current.value = ''
+      PerformanceMonitor.log('🧹 已清空示例文件输入')
     }
+    PerformanceMonitor.end('clone-dialog-reset')
   }
 
   const copyToClipboard = (text: string) => {
@@ -462,15 +475,19 @@ export function TTSTestClient() {
 
   // 文件选择处理器 - 使用 useCallback 避免重复创建
   const handleCloneFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    PerformanceMonitor.start('clone-file-selection')
     const file = e.target.files?.[0] || null
-    console.log('[v0] Clone file selected:', file?.name, file?.size)
+    PerformanceMonitor.trackFileSelection(file, 'clone-file-input')
     setCloneFile(file)
+    PerformanceMonitor.end('clone-file-selection')
   }, [])
 
   const handlePromptFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    PerformanceMonitor.start('prompt-file-selection')
     const file = e.target.files?.[0] || null
-    console.log('[v0] Prompt file selected:', file?.name, file?.size)
+    PerformanceMonitor.trackFileSelection(file, 'prompt-file-input')
     setClonePromptFile(file)
+    PerformanceMonitor.end('prompt-file-selection')
   }, [])
 
   return (
@@ -873,7 +890,7 @@ export function TTSTestClient() {
                       ✓ 声音克隆成功！
                     </p>
                     <p className="text-xs text-green-800 dark:text-green-200">
-                      现在可以在上方的语音合成中使用这个声音了
+                      现在可以在上方的语音合成中使用这个声音���
                     </p>
                   </div>
 

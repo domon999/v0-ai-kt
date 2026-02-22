@@ -1,3 +1,5 @@
+'use client'
+
 import { Card, CardContent } from '@/components/ui/card'
 import { Video, Mic, Zap, ImageIcon, Wand2, Clock } from 'lucide-react'
 
@@ -5,7 +7,7 @@ const features = [
   {
     icon: Video,
     title: '数字人克隆',
-    description: '上传一张照片，即可生成逼真的数字人形象，支持多种动作和姿态。',
+    description: '上传一张照片，即可生成逼真的数字人形象，支持多种动作和表情。',
   },
   {
     icon: Mic,

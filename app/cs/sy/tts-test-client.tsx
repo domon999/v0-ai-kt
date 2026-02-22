@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -155,6 +155,8 @@ export function TTSTestClient() {
   const [clonePromptText, setClonePromptText] = useState('')
   const [cloneLoading, setCloneLoading] = useState(false)
   const [cloneClipboard, setCloneClipboard] = useState(false)
+  const cloneFileInputRef = useRef<HTMLInputElement>(null)
+  const promptFileInputRef = useRef<HTMLInputElement>(null)
 
   const addLog = (msg: string) => {
     const time = new Date().toLocaleTimeString('zh-CN', { hour12: false })
@@ -435,6 +437,7 @@ export function TTSTestClient() {
   }
 
   const handleCloneReset = () => {
+    console.log('[v0] Resetting clone dialog')
     setShowCloneDialog(false)
     setCloneStep(1)
     setCloneFile(null)
@@ -442,6 +445,13 @@ export function TTSTestClient() {
     setCloneVoiceName('')
     setClonePromptFile(null)
     setClonePromptText('')
+    // 清理文件输入，防止内存泄漏
+    if (cloneFileInputRef.current) {
+      cloneFileInputRef.current.value = ''
+    }
+    if (promptFileInputRef.current) {
+      promptFileInputRef.current.value = ''
+    }
   }
 
   const copyToClipboard = (text: string) => {
@@ -449,6 +459,19 @@ export function TTSTestClient() {
     setCloneClipboard(true)
     setTimeout(() => setCloneClipboard(false), 2000)
   }
+
+  // 文件选择处理器 - 使用 useCallback 避免重复创建
+  const handleCloneFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null
+    console.log('[v0] Clone file selected:', file?.name, file?.size)
+    setCloneFile(file)
+  }, [])
+
+  const handlePromptFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null
+    console.log('[v0] Prompt file selected:', file?.name, file?.size)
+    setClonePromptFile(file)
+  }, [])
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -769,9 +792,10 @@ export function TTSTestClient() {
                     <Label>待克隆音频</Label>
                     <p className="text-xs text-muted-foreground">支持 mp3、m4a、wav 格式，时长 10秒-5分钟，最大 20MB</p>
                     <Input
+                      ref={cloneFileInputRef}
                       type="file"
                       accept=".mp3,.m4a,.wav"
-                      onChange={(e) => setCloneFile(e.target.files?.[0] || null)}
+                      onChange={handleCloneFileChange}
                     />
                     {cloneFile && (
                       <p className="text-xs text-muted-foreground">
@@ -784,9 +808,10 @@ export function TTSTestClient() {
                     <Label>示例音频（可选）</Label>
                     <p className="text-xs text-muted-foreground">支持 mp3、m4a、wav 格式，时长小于 8秒，最大 20MB</p>
                     <Input
+                      ref={promptFileInputRef}
                       type="file"
                       accept=".mp3,.m4a,.wav"
-                      onChange={(e) => setClonePromptFile(e.target.files?.[0] || null)}
+                      onChange={handlePromptFileChange}
                     />
                     {clonePromptFile && (
                       <div className="space-y-2">

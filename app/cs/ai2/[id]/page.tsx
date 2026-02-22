@@ -188,14 +188,17 @@ export default function VoiceDetailUIPage() {
                           </div>
                           <p className="text-sm">{audio.text}</p>
                           <p className="text-xs text-muted-foreground mt-2">
-                            {new Date(audio.created_at).toLocaleString('zh-CN', {
-                              year: 'numeric',
-                              month: '2-digit',
-                              day: '2-digit',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                              second: '2-digit',
-                            })}
+                            {typeof audio.created_at === 'string' 
+                              ? new Date(audio.created_at).toLocaleString('zh-CN', {
+                                  year: 'numeric',
+                                  month: '2-digit',
+                                  day: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  second: '2-digit',
+                                })
+                              : '时间未知'
+                            }
                           </p>
                         </div>
                         <div className="relative">

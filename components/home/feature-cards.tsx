@@ -36,9 +36,9 @@ const features = [
 
 export function FeatureCards() {
   return (
-    <section className="py-20">
+    <section className="py-20" suppressHydrationWarning>
       <div className="container mx-auto px-4">
-        <div className="mb-12 text-center">
+        <div className="mb-12 text-center" suppressHydrationWarning>
           <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl">核心功能</h2>
           <p className="mx-auto max-w-2xl text-pretty text-muted-foreground">
             强大的 AI 技术支持，为您提供专业级的数字人口播视频制作能力
@@ -49,8 +49,8 @@ export function FeatureCards() {
           {features.map((feature) => {
             const Icon = feature.icon
             return (
-              <Card key={feature.title} className="border-border/50 transition-colors hover:border-primary/50">
-                <CardContent className="pt-6">
+              <Card key={feature.title} className="border-border/50 transition-colors hover:border-primary/50" suppressHydrationWarning>
+                <CardContent className="pt-6" suppressHydrationWarning>
                   <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
                     <Icon className="h-6 w-6 text-primary" />
                   </div>

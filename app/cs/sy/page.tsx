@@ -1,5 +1,5 @@
 import { TTSTestClient } from './tts-test-client'
-import { DebugPanel } from '@/components/debug-panel'
+// import { DebugPanel } from '@/components/debug-panel'
 import NoSSR from '@/components/no-ssr'
 
 export const metadata = {
@@ -11,7 +11,7 @@ export default function TTSTestPage() {
   return (
     <NoSSR>
       <TTSTestClient />
-      <DebugPanel />
+      {/* <DebugPanel /> */}
     </NoSSR>
   )
 }

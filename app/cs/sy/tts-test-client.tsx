@@ -23,7 +23,10 @@ import { Badge } from '@/components/ui/badge'
 // 声音克隆组件使用客户端渲染，避免 SSR 导致的插件冲突
 const VoiceCloneUpload = dynamic(
   () => import('@/components/voice-clone-upload').then(mod => ({ default: mod.VoiceCloneUpload })),
-  { ssr: false }
+  { 
+    ssr: false,
+    loading: () => <Card><CardContent className="p-6">加载中...</CardContent></Card>
+  }
 )
 
 // ========== 官方系统音色列表 ==========

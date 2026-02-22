@@ -3,8 +3,16 @@ import { Geist, Geist_Mono } from 'next/font/google'
 
 import './globals.css'
 
-const _geist = Geist({ subsets: ['latin'] })
-const _geistMono = Geist_Mono({ subsets: ['latin'] })
+const _geist = Geist({ 
+  subsets: ['latin'],
+  display: 'swap',
+  preload: true,
+})
+const _geistMono = Geist_Mono({ 
+  subsets: ['latin'],
+  display: 'swap',
+  preload: true,
+})
 
 export const metadata: Metadata = {
   title: 'v0 App',
@@ -18,7 +26,10 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="zh-CN">
+      <head>
+        <meta charSet="utf-8" />
+      </head>
       <body className="font-sans antialiased">{children}</body>
     </html>
   )

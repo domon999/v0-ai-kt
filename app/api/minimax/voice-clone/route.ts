@@ -1,47 +1,44 @@
-import { type NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { ApiResponseHelper } from '@/lib/utils/api-response'
 
-// 音色克隆
+/**
+ * POST /api/minimax/voice-clone
+ * 声音克隆 API
+ * 
+ * 请求体：
+ * {
+ *   file: File (form-data),
+ *   voice_id: string,
+ *   voice_name: string,
+ *   prompt_file?: File (form-data, optional),
+ *   prompt_text?: string (optional),
+ *   api_key?: string (optional, 自定义 API Key),
+ *   group_id?: string (optional, 自定义 Group ID)
+ * }
+ */
 export async function POST(request: NextRequest) {
   try {
+    console.log('[v0] POST /api/minimax/voice-clone - Start')
+
     const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const formData = await request.formData()
 
-    if (!user) {
-      return ApiResponseHelper.unauthorized('请先登录')
+    const file = formData.get('file') as File
+    const voiceId = formData.get('voice_id') as string
+    const voiceName = formData.get('voice_name') as string
+    const promptFile = formData.get('prompt_file') as File | null
+    const promptText = formData.get('prompt_text') as string | null
+    let apiKey = formData.get('api_key') as string | null
+    let groupId = formData.get('group_id') as string | null
+
+    console.log('[v0] Request params:', { voiceId, voiceName, hasFile: !!file, hasPromptFile: !!promptFile })
+
+    if (!file || !voiceId || !voiceName) {
+      return ApiResponseHelper.validationError('缺少必填字段: file, voice_id, voice_name')
     }
 
-    const body = await request.json()
-    const {
-      file_id,
-      voice_id,
-      text,
-      model,
-      clone_prompt,
-      api_key: customApiKey,
-      group_id: customGroupId,
-    } = body
-
-    if (!file_id || !voice_id || !text) {
-      return ApiResponseHelper.validationError('缺少必填字段: file_id, voice_id, text')
-    }
-
-    console.log('[v0] Voice clone request:', {
-      file_id,
-      voice_id,
-      textLength: text.length,
-      model: model || 'speech-2.8-hd',
-      hasClonePrompt: !!clone_prompt,
-      hasCustomKey: !!customApiKey,
-    })
-
-    // 获取 API Key
-    let apiKey = customApiKey
-    let groupId = customGroupId
-
+    // 如果未提供 API Key，从数据库获取
     if (!apiKey) {
       const { data: config } = await supabase
         .from('minimax_voice_configs')
@@ -59,58 +56,55 @@ export async function POST(request: NextRequest) {
       groupId = groupId || config.group_id
     }
 
-    // 构建请求体
-    const requestBody: any = {
-      file_id,
-      voice_id,
-      text,
-      model: model || 'speech-2.8-hd',
+    console.log('[v0] API Key resolved, usingCustom:', !!formData.get('api_key'))
+
+    // 构建 FormData 发送给 MiniMax API
+    const cloneFormData = new FormData()
+    cloneFormData.append('file', file, file.name)
+    cloneFormData.append('voice_id', voiceId)
+
+    if (promptFile && promptText) {
+      cloneFormData.append('prompt_audio', promptFile, promptFile.name)
+      cloneFormData.append('prompt_text', promptText)
     }
 
-    if (clone_prompt) {
-      requestBody.clone_prompt = clone_prompt
-    }
-
-    if (groupId) {
-      requestBody.GroupID = groupId
-    }
-
-    console.log('[v0] Calling MiniMax voice clone API:', JSON.stringify(requestBody, null, 2))
+    console.log('[v0] Calling MiniMax voice clone API...')
 
     const response = await fetch('https://api.minimaxi.com/v1/voice_clone', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
+        ...(groupId && { 'GroupID': groupId }),
       },
-      body: JSON.stringify(requestBody),
+      body: cloneFormData,
     })
+
+    console.log('[v0] MiniMax response status:', response.status)
 
     const responseData = await response.json()
-    console.log('[v0] Voice clone response:', {
-      status: response.status,
-      data: responseData,
-    })
+    console.log('[v0] MiniMax response:', JSON.stringify(responseData).slice(0, 200))
 
     if (!response.ok) {
-      return ApiResponseHelper.serverError(
-        responseData.error?.message || responseData.message || `克隆失败: HTTP ${response.status}`
-      )
+      const error = responseData.error || responseData.message || `HTTP ${response.status}`
+      console.error('[v0] Voice clone failed:', error)
+      return ApiResponseHelper.serverError(`克隆失败: ${error}`)
     }
 
-    // MiniMax 返回的是音频 Base64 或 URL
-    return ApiResponseHelper.success(
-      {
-        voice_id,
-        audio: responseData.audio,
-        extra_info: responseData.extra_info,
-      },
-      '声音克隆成功'
-    )
+    if (responseData.status_code !== 0 && !responseData.success) {
+      const error = responseData.error_msg || responseData.message || '克隆失败'
+      console.error('[v0] Voice clone error:', error)
+      return ApiResponseHelper.serverError(error)
+    }
+
+    console.log('[v0] Voice clone success')
+
+    return ApiResponseHelper.success({
+      voiceId: voiceId,
+      voiceName: voiceName,
+      message: '声音克隆成功',
+    }, '声音克隆成功')
   } catch (error) {
     console.error('[v0] Voice clone error:', error)
-    return ApiResponseHelper.serverError(
-      error instanceof Error ? error.message : '克隆失败'
-    )
+    return ApiResponseHelper.serverError('声音克隆失败')
   }
 }

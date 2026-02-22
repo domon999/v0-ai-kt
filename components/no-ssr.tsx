@@ -1,10 +1,17 @@
-import dynamic from 'next/dynamic'
-import React from 'react'
+'use client'
 
-const NoSSRWrapper = (props: { children: React.ReactNode }) => (
-  <React.Fragment>{props.children}</React.Fragment>
-)
+import { ReactNode, useEffect, useState } from 'react'
 
-export default dynamic(() => Promise.resolve(NoSSRWrapper), {
-  ssr: false, // 完全关闭服务器端渲染，避免Hydration错误
-})
+export default function NoSSR({ children }: { children: ReactNode }) {
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  if (!isClient) {
+    return null
+  }
+
+  return <>{children}</>
+}

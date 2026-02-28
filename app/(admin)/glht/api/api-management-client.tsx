@@ -21,7 +21,7 @@ export function ApiManagementClient({
 }: Props) {
   return (
     <div className="space-y-6">
-      <div>
+      <div suppressHydrationWarning>
         <h1 className="text-3xl font-bold">API 管理中心</h1>
         <p className="text-muted-foreground">统一管理所有 AI 接口配置</p>
       </div>

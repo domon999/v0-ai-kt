@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { PerformanceMonitor } from '@/lib/performance-monitor'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -19,15 +18,6 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import { Copy, Check } from 'lucide-react'
 
 // ========== 官方系统音色列表 ==========
 const VOICE_CATEGORIES = [
@@ -144,28 +134,17 @@ export function TTSTestClient() {
   const [asyncStatus, setAsyncStatus] = useState('')
   const [asyncFileId, setAsyncFileId] = useState('')
   const [asyncLoading, setAsyncLoading] = useState(false)
-  const audioRef = useRef<HTMLAudioElement>(null)
-
-  // ========== 声音克隆状态 ==========
-  const [showCloneDialog, setShowCloneDialog] = useState(false)
-  const [cloneStep, setCloneStep] = useState(1) // 1=上传克隆音频, 2=确认克隆参数, 3=克隆完成
   const [cloneFile, setCloneFile] = useState<File | null>(null)
+  const [promptFile, setPromptFile] = useState<File | null>(null)
   const [cloneVoiceId, setCloneVoiceId] = useState('')
-  const [cloneVoiceName, setCloneVoiceName] = useState('')
-  const [clonePromptFile, setClonePromptFile] = useState<File | null>(null)
-  const [clonePromptText, setClonePromptText] = useState('')
+  const [cloneText, setCloneText] = useState('大兄弟，听您口音不是本地人吧，头回来天津卫，啊，待会您可甭跟着导航走，那玩意儿净给您往大马路上绕。')
+  const [promptText, setPromptText] = useState('后来认为啊，是有人抓这鸡，可是抓鸡的地方呢没人听过鸡叫。')
   const [cloneLoading, setCloneLoading] = useState(false)
-  const [cloneClipboard, setCloneClipboard] = useState(false)
-  const cloneFileInputRef = useRef<HTMLInputElement>(null)
-  const promptFileInputRef = useRef<HTMLInputElement>(null)
-
-  // 性能监控：追踪组件生命周期
-  useEffect(() => {
-    PerformanceMonitor.log('🚀 TTSTestClient 组件已挂载')
-    return () => {
-      PerformanceMonitor.log('💀 TTSTestClient 组件已卸载')
-    }
-  }, [])
+  const [cloneFileId, setCloneFileId] = useState('')
+  const [promptFileId, setPromptFileId] = useState('')
+  const [cloneAudioUrl, setCloneAudioUrl] = useState<string | null>(null)
+  const audioRef = useRef<HTMLAudioElement>(null)
+  const cloneAudioRef = useRef<HTMLAudioElement>(null)
 
   const addLog = (msg: string) => {
     const time = new Date().toLocaleTimeString('zh-CN', { hour12: false })
@@ -377,118 +356,145 @@ export function TTSTestClient() {
   }
 
   // ========== 声音克隆 ==========
-  const handleCloneNext = async () => {
-    if (cloneStep === 1) {
-      if (!cloneFile) {
-        setError('请选择待克隆音频')
-        return
-      }
-      const fileSizeMB = cloneFile.size / 1024 / 1024
-      if (fileSizeMB > 20) {
-        setError('文件过大（最大20MB）')
-        return
-      }
-      setCloneStep(2)
-      setError('')
-    } else if (cloneStep === 2) {
-      if (!cloneVoiceId.trim()) {
-        setError('请输入自定义 Voice ID')
-        return
-      }
-      if (!cloneVoiceName.trim()) {
-        setError('请输入声音名称')
-        return
-      }
-      setCloneLoading(true)
-      setError('')
+  const handleUploadCloneFile = async () => {
+    if (!cloneFile) {
+      setError('请选择待克隆音频')
+      return
+    }
+    setCloneLoading(true)
+    addLog(`上传克隆音频: ${cloneFile.name}`)
 
-      try {
-        addLog(`开始克隆声音: voice_id=${cloneVoiceId}, name=${cloneVoiceName}`)
+    try {
+      const formData = new FormData()
+      formData.append('file', cloneFile)
+      formData.append('purpose', 'voice_clone')
+      if (customApiKey) formData.append('api_key', customApiKey)
+      if (customGroupId) formData.append('group_id', customGroupId)
 
-        // 构建 FormData
-        const formData = new FormData()
-        formData.append('file', cloneFile)
-        formData.append('voice_id', cloneVoiceId)
-        formData.append('voice_name', cloneVoiceName)
-        if (clonePromptFile) {
-          formData.append('prompt_file', clonePromptFile)
-          formData.append('prompt_text', clonePromptText)
-        }
-        if (customApiKey) {
-          formData.append('api_key', customApiKey)
-        }
-        if (customGroupId) {
-          formData.append('group_id', customGroupId)
-        }
+      const res = await fetch('/api/minimax/voice-clone/upload', {
+        method: 'POST',
+        body: formData,
+      })
 
-        const res = await fetch('/api/minimax/voice-clone', {
-          method: 'POST',
-          body: formData,
-        })
-
-        const data = await res.json()
-        addLog(`克隆响应: ${JSON.stringify(data)}`)
-
-        if (data.success) {
-          addLog(`声音克隆成功！Voice ID: ${cloneVoiceId}`)
-          setCloneStep(3)
-        } else {
-          setError(data.error || '克隆失败')
-          addLog(`错误: ${data.error}`)
-        }
-      } catch (e: any) {
-        setError(e.message || '克隆失败')
-        addLog(`异常: ${e.message}`)
-      } finally {
-        setCloneLoading(false)
+      const data = await res.json()
+      if (data.success && data.data?.file_id) {
+        setCloneFileId(data.data.file_id)
+        addLog(`克隆音频上传成功: file_id=${data.data.file_id}`)
+      } else {
+        setError(data.error || '上传失败')
+        addLog(`错误: ${data.error}`)
       }
+    } catch (e: any) {
+      setError(e.message || '上传失败')
+      addLog(`异常: ${e.message}`)
+    } finally {
+      setCloneLoading(false)
     }
   }
 
-  const handleCloneReset = () => {
-    PerformanceMonitor.start('clone-dialog-reset')
-    PerformanceMonitor.log('🔄 重置克隆对话框')
-    setShowCloneDialog(false)
-    setCloneStep(1)
-    setCloneFile(null)
-    setCloneVoiceId('')
-    setCloneVoiceName('')
-    setClonePromptFile(null)
-    setClonePromptText('')
-    // 清理文件输入，防止内存泄漏
-    if (cloneFileInputRef.current) {
-      cloneFileInputRef.current.value = ''
-      PerformanceMonitor.log('🧹 已清空克隆文件输入')
+  const handleUploadPromptFile = async () => {
+    if (!promptFile) {
+      setError('请选择示例音频')
+      return
     }
-    if (promptFileInputRef.current) {
-      promptFileInputRef.current.value = ''
-      PerformanceMonitor.log('🧹 已清空示例文件输入')
+    setCloneLoading(true)
+    addLog(`上传示例音频: ${promptFile.name}`)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', promptFile)
+      formData.append('purpose', 'prompt_audio')
+      if (customApiKey) formData.append('api_key', customApiKey)
+      if (customGroupId) formData.append('group_id', customGroupId)
+
+      const res = await fetch('/api/minimax/voice-clone/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await res.json()
+      if (data.success && data.data?.file_id) {
+        setPromptFileId(data.data.file_id)
+        addLog(`示例音频上传成功: file_id=${data.data.file_id}`)
+      } else {
+        setError(data.error || '上传失败')
+        addLog(`错误: ${data.error}`)
+      }
+    } catch (e: any) {
+      setError(e.message || '上传失败')
+      addLog(`异常: ${e.message}`)
+    } finally {
+      setCloneLoading(false)
     }
-    PerformanceMonitor.end('clone-dialog-reset')
   }
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    setCloneClipboard(true)
-    setTimeout(() => setCloneClipboard(false), 2000)
+  const handleVoiceClone = async () => {
+    if (!cloneFileId) {
+      setError('请先上传克隆音频')
+      return
+    }
+    if (!cloneVoiceId) {
+      setError('请输入自定义 Voice ID')
+      return
+    }
+    if (!cloneText) {
+      setError('请输入测试文本')
+      return
+    }
+
+    setCloneLoading(true)
+    addLog(`开始声音克隆: voice_id=${cloneVoiceId}`)
+
+    try {
+      const requestBody: any = {
+        file_id: cloneFileId,
+        voice_id: cloneVoiceId,
+        text: cloneText,
+        model: model || 'speech-2.8-hd',
+      }
+
+      if (promptFileId && promptText) {
+        requestBody.clone_prompt = {
+          prompt_audio: promptFileId,
+          prompt_text: promptText,
+        }
+      }
+
+      if (customApiKey) requestBody.api_key = customApiKey
+      if (customGroupId) requestBody.group_id = customGroupId
+
+      const res = await fetch('/api/minimax/voice-clone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      })
+
+      const data = await res.json()
+      addLog(`克隆响应: ${JSON.stringify(data)}`)
+
+      if (data.success && data.data?.audio) {
+        // 将 Base64 音频转为 Blob
+        const base64Audio = data.data.audio
+        const audioData = atob(base64Audio)
+        const arrayBuffer = new Uint8Array(audioData.length)
+        for (let i = 0; i < audioData.length; i++) {
+          arrayBuffer[i] = audioData.charCodeAt(i)
+        }
+        const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' })
+        const url = URL.createObjectURL(blob)
+        setCloneAudioUrl(url)
+        addLog(`声音克隆成功！现在可以使用 voice_id: ${cloneVoiceId}`)
+      } else {
+        setError(data.error || '克隆失败')
+        addLog(`错误: ${data.error}`)
+      }
+    } catch (e: any) {
+      setError(e.message || '克隆失败')
+      addLog(`异常: ${e.message}`)
+    } finally {
+      setCloneLoading(false)
+    }
   }
-
-  // 文件选择处理器 - 使用 useCallback 避免重复创建
-  const handleCloneFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    PerformanceMonitor.start('clone-file-selection')
-    const file = e.target.files?.[0] || null
-    PerformanceMonitor.trackFileSelection(file, 'clone-file-input')
-    setCloneFile(file)
-    PerformanceMonitor.end('clone-file-selection')
-  }, [])
-
-  const handlePromptFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    PerformanceMonitor.start('prompt-file-selection')
-    const file = e.target.files?.[0] || null
-    PerformanceMonitor.trackFileSelection(file, 'prompt-file-input')
-    setClonePromptFile(file)
-    PerformanceMonitor.end('prompt-file-selection')
-  }, [])
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -772,172 +778,165 @@ export function TTSTestClient() {
           </Card>
         )}
 
-        {/* 声音克隆按钮 */}
-        <Button
-          onClick={() => setShowCloneDialog(true)}
-          size="lg"
-          className="w-full"
-          variant="outline"
-        >
-          音色快速复刻
-        </Button>
-
-        {/* 声音克隆对话框 */}
-        <Dialog open={showCloneDialog} onOpenChange={(open) => {
-          if (!open) handleCloneReset()
-          setShowCloneDialog(open)
-        }}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {cloneStep === 1 && '第一步：上传克隆音频'}
-                {cloneStep === 2 && '第二步：确认克隆参数'}
-                {cloneStep === 3 && '克隆成功'}
-              </DialogTitle>
-              <DialogDescription>
-                {cloneStep === 1 && '上传一段包含目标声音的音频文件（10秒-5分钟）'}
-                {cloneStep === 2 && '填写自定义 Voice ID 和声音名称'}
-                {cloneStep === 3 && '声音克隆已完成，现在可以在上方的语音合成中使用'}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-6">
-              {/* 步骤1: 上传克隆音频 */}
-              {cloneStep === 1 && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>待克隆音频</Label>
-                    <p className="text-xs text-muted-foreground">支持 mp3、m4a、wav 格式，时长 10秒-5分钟，最大 20MB</p>
-                    <Input
-                      ref={cloneFileInputRef}
-                      type="file"
-                      accept=".mp3,.m4a,.wav"
-                      onChange={handleCloneFileChange}
-                    />
-                    {cloneFile && (
-                      <p className="text-xs text-muted-foreground">
-                        已选择: {cloneFile.name} ({(cloneFile.size / 1024 / 1024).toFixed(1)}MB)
-                      </p>
-                    )}
+        {/* 调试日志 */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>调试日志</CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => setLogs([])}>
+                清空
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="max-h-60 overflow-y-auto rounded-lg bg-muted p-3 font-mono text-xs">
+              {logs.length === 0 ? (
+                <p className="text-muted-foreground">暂无日志...</p>
+              ) : (
+                logs.map((log, i) => (
+                  <div key={i} className="py-0.5">
+                    {log}
                   </div>
-
-                  <div className="space-y-2">
-                    <Label>示例音频（可选）</Label>
-                    <p className="text-xs text-muted-foreground">支持 mp3、m4a、wav 格式，时长小于 8秒，最大 20MB</p>
-                    <Input
-                      ref={promptFileInputRef}
-                      type="file"
-                      accept=".mp3,.m4a,.wav"
-                      onChange={handlePromptFileChange}
-                    />
-                    {clonePromptFile && (
-                      <div className="space-y-2">
-                        <p className="text-xs text-muted-foreground">
-                          已选择: {clonePromptFile.name}
-                        </p>
-                        <Input
-                          value={clonePromptText}
-                          onChange={(e) => setClonePromptText(e.target.value)}
-                          placeholder="输入示例音频的文本内容"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
+                ))
               )}
+            </div>
+          </CardContent>
+        </Card>
 
-              {/* 步骤2: 确认克隆参数 */}
-              {cloneStep === 2 && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>自定义 Voice ID（必填）</Label>
-                    <Input
-                      value={cloneVoiceId}
-                      onChange={(e) => setCloneVoiceId(e.target.value)}
-                      placeholder="例如: my-voice-001"
-                    />
-                    <p className="text-xs text-muted-foreground">输入一个唯一的 Voice ID，用于标识这个克隆声音</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>声音名称（必填）</Label>
-                    <Input
-                      value={cloneVoiceName}
-                      onChange={(e) => setCloneVoiceName(e.target.value)}
-                      placeholder="例如: 张三的声音"
-                    />
-                  </div>
-
-                  <div className="rounded-lg bg-muted p-3 space-y-2">
-                    <p className="text-sm font-medium">克隆信息：</p>
-                    <p className="text-xs text-muted-foreground">
-                      音频: {cloneFile?.name}
-                    </p>
-                    {clonePromptFile && (
-                      <p className="text-xs text-muted-foreground">
-                        示例音频: {clonePromptFile.name}
-                      </p>
-                    )}
-                  </div>
-                </div>
+        {/* 声音克隆 */}
+        <Card>
+          <CardHeader>
+            <CardTitle>声音克隆</CardTitle>
+            <CardDescription>
+              上传音频文件克隆声音，生成自定义 Voice ID 用于后续语音合成
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* 步骤1: 上传克隆音频 */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>1. 上传待克隆音频（必填）</Label>
+                {cloneFileId && <Badge variant="secondary">已上传</Badge>}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                支持 mp3、m4a、wav 格式，时长 10秒-5分钟，最大 20MB
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  type="file"
+                  accept=".mp3,.m4a,.wav"
+                  onChange={(e) => setCloneFile(e.target.files?.[0] || null)}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={handleUploadCloneFile}
+                  disabled={cloneLoading || !cloneFile}
+                  variant="outline"
+                >
+                  上传
+                </Button>
+              </div>
+              {cloneFileId && (
+                <p className="text-xs text-muted-foreground">
+                  file_id: <code className="rounded bg-muted px-1">{cloneFileId}</code>
+                </p>
               )}
+            </div>
 
-              {/* 步骤3: 克隆完成 */}
-              {cloneStep === 3 && (
-                <div className="space-y-4">
-                  <div className="rounded-lg bg-green-50 dark:bg-green-950 p-4 text-center space-y-2">
-                    <p className="text-sm font-medium text-green-900 dark:text-green-100">
-                      ✓ 声音克隆成功！
-                    </p>
-                    <p className="text-xs text-green-800 dark:text-green-200">
-                      现在可以在上方的语音合成中使用这个声音���
-                    </p>
-                  </div>
-
+            {/* 步骤2: 上传示例音频（可选） */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>2. 上传示例音频（可选）</Label>
+                {promptFileId && <Badge variant="secondary">已上传</Badge>}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                支持 mp3、m4a、wav 格式，时长小于 8秒，最大 20MB
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  type="file"
+                  accept=".mp3,.m4a,.wav"
+                  onChange={(e) => setPromptFile(e.target.files?.[0] || null)}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={handleUploadPromptFile}
+                  disabled={cloneLoading || !promptFile}
+                  variant="outline"
+                >
+                  上传
+                </Button>
+              </div>
+              {promptFileId && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    file_id: <code className="rounded bg-muted px-1">{promptFileId}</code>
+                  </p>
                   <div className="space-y-2">
-                    <Label>新 Voice ID</Label>
-                    <div className="flex gap-2">
-                      <Input value={cloneVoiceId} disabled />
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={() => copyToClipboard(cloneVoiceId)}
-                      >
-                        {cloneClipboard ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      复制此 Voice ID 并在上方的声音选择中使用
-                    </p>
+                    <Label>示例文本</Label>
+                    <Input
+                      value={promptText}
+                      onChange={(e) => setPromptText(e.target.value)}
+                      placeholder="输入示例音频对应的文本"
+                    />
                   </div>
-                </div>
-              )}
-
-              {error && cloneStep < 3 && (
-                <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3">
-                  <p className="text-sm text-destructive">{error}</p>
                 </div>
               )}
             </div>
 
-            <DialogFooter className="gap-2">
-              <Button
-                variant="outline"
-                onClick={handleCloneReset}
-              >
-                {cloneStep === 3 ? '完成' : '取消'}
-              </Button>
-              {cloneStep < 3 && (
-                <Button
-                  onClick={handleCloneNext}
-                  disabled={cloneLoading || (cloneStep === 1 && !cloneFile)}
-                >
-                  {cloneLoading ? '处理中...' : cloneStep === 1 ? '下一步' : '开始克隆'}
-                </Button>
-              )}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            {/* 步骤3: 配置克隆参数 */}
+            <div className="space-y-3">
+              <Label>3. 配置克隆参数</Label>
+              <div className="space-y-2">
+                <Label htmlFor="clone-voice-id">自定义 Voice ID（必填）</Label>
+                <Input
+                  id="clone-voice-id"
+                  value={cloneVoiceId}
+                  onChange={(e) => setCloneVoiceId(e.target.value)}
+                  placeholder="例如: my-custom-voice-001"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="clone-text">测试文本（必填）</Label>
+                <Textarea
+                  id="clone-text"
+                  value={cloneText}
+                  onChange={(e) => setCloneText(e.target.value)}
+                  placeholder="输入用于克隆测试的文本"
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            {/* 步骤4: 开始克隆 */}
+            <Button
+              onClick={handleVoiceClone}
+              disabled={cloneLoading || !cloneFileId || !cloneVoiceId || !cloneText}
+              className="w-full"
+            >
+              {cloneLoading ? '克隆中...' : '4. 开始克隆'}
+            </Button>
+
+            {/* 克隆结果 */}
+            {cloneAudioUrl && (
+              <div className="space-y-2 rounded-lg border bg-muted/50 p-4">
+                <p className="text-sm font-medium text-green-600">
+                  ✓ 克隆成功！Voice ID: {cloneVoiceId}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  现在可以在上面的语音合成中使用这个 Voice ID
+                </p>
+                <Label>试听克隆音频：</Label>
+                <audio
+                  ref={cloneAudioRef}
+                  controls
+                  src={cloneAudioUrl}
+                  className="w-full"
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

@@ -1,5 +1,3 @@
-'use client'
-
 import { Card, CardContent } from '@/components/ui/card'
 import { Video, Mic, Zap, ImageIcon, Wand2, Clock } from 'lucide-react'
 
